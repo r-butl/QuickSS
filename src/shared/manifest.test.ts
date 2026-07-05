@@ -46,13 +46,13 @@ describe('createThread', () => {
     const { guide: g2, thread: t2 } = createThread(g1)
     expect(t2.name).toBe('Thread 2')
 
-    const { guide: _g3, thread: t3 } = createThread(g2)
+    const { thread: t3 } = createThread(g2)
     expect(t3.name).toBe('Thread 3')
   })
 
   it('uses custom name when provided', () => {
     const guide = createGuide('Test')
-    const { guide: _g, thread: t } = createThread(guide, 'Custom Name')
+    const { thread: t } = createThread(guide, 'Custom Name')
     expect(t.name).toBe('Custom Name')
   })
 
@@ -80,7 +80,7 @@ describe('createThread', () => {
   it('generates unique thread IDs', () => {
     const guide = createGuide('Test')
     const { guide: g1, thread: t1 } = createThread(guide)
-    const { guide: _g2, thread: t2 } = createThread(g1)
+    const { thread: t2 } = createThread(g1)
 
     expect(t1.id).not.toBe(t2.id)
   })
