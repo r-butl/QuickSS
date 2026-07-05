@@ -1,0 +1,20 @@
+node_modules
+dist
+out
+release
+
+# Build artifacts
+*.log
+npm-debug.log*
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

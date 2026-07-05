@@ -1,0 +1,7 @@
+out
+dist
+node_modules
+
+# Reference docs pre-dating this app; not to be reformatted by tooling
+feature-requirements.md
+implementation-plan.md
