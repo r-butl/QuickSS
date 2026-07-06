@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { GuideApi, GuideResult, RecentGuideEntry } from '../shared/guideApi'
+import type {
+  CreateThreadResult,
+  CurrentGuideResult,
+  GuideApi,
+  GuideResult,
+  RecentGuideEntry
+} from '../shared/guideApi'
 
 // Typed API wrapping the app's `guide:*` IPC channels. This is the only
 // surface the renderer uses to talk to the main process for Guide
@@ -10,7 +16,23 @@ const guideApi: GuideApi = {
     ipcRenderer.invoke('guide:create', basePath, title),
   open: (guidePath: string): Promise<GuideResult> => ipcRenderer.invoke('guide:open', guidePath),
   openViaDialog: (): Promise<GuideResult | null> => ipcRenderer.invoke('guide:openViaDialog'),
-  listRecent: (): Promise<RecentGuideEntry[]> => ipcRenderer.invoke('guide:listRecent')
+  listRecent: (): Promise<RecentGuideEntry[]> => ipcRenderer.invoke('guide:listRecent'),
+  getCurrent: (): Promise<CurrentGuideResult | null> => ipcRenderer.invoke('guide:getCurrent'),
+  createThread: (): Promise<CreateThreadResult> => ipcRenderer.invoke('guide:createThread'),
+  onGuideUpdated: (callback: (payload: CurrentGuideResult) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: CurrentGuideResult): void =>
+      callback(payload)
+    ipcRenderer.on('guide:updated', listener)
+    return () => ipcRenderer.removeListener('guide:updated', listener)
+  },
+  requestToggleOverview: (): void => {
+    ipcRenderer.send('app:requestToggleOverview')
+  },
+  onToggleOverviewRequested: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('app:toggleOverview', listener)
+    return () => ipcRenderer.removeListener('app:toggleOverview', listener)
+  }
 }
 
 // Custom APIs for renderer

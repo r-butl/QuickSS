@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './ipc'
 import { registerCaptureHotkeys, unregisterCaptureHotkeys } from './hotkeys'
 import { captureFullScreen, captureRegion } from './capture'
+import { setMainWindow } from './windows/windowRegistry'
 
 function createWindow(): void {
   // Create the browser window.
@@ -21,6 +22,8 @@ function createWindow(): void {
       sandbox: true
     }
   })
+
+  setMainWindow(mainWindow)
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()

@@ -2,8 +2,17 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import type { GuideResult } from '../shared/guideApi'
-import { createGuideFolder, readManifest } from './persistence'
+import { createGuideFolder, readManifest, writeManifest } from './persistence'
 import { addRecentGuide, readRecentGuides } from './recentGuides'
+import { createThread } from '../shared/manifest'
+import {
+  getCurrentGuide,
+  setCurrentGuide,
+  updateCurrentGuide,
+  type CurrentGuideState
+} from './guideState'
+import { createOrShowCommandWindow } from './windows/commandWindow'
+import { getMainWindow } from './windows/windowRegistry'
 
 export type { GuideResult }
 
@@ -41,11 +50,16 @@ export function registerIpcHandlers(): void {
       title: guide.title,
       lastOpenedAt: new Date().toISOString()
     })
+    setCurrentGuide(guidePath, guide)
+    createOrShowCommandWindow()
     return { guidePath, guide }
   })
 
   ipcMain.handle('guide:open', async (_event, guidePath: string) => {
-    return openGuideAtPath(guidePath)
+    const result = await openGuideAtPath(guidePath)
+    setCurrentGuide(result.guidePath, result.guide)
+    createOrShowCommandWindow()
+    return result
   })
 
   ipcMain.handle('guide:openViaDialog', async (event) => {
@@ -58,10 +72,34 @@ export function registerIpcHandlers(): void {
       return null
     }
 
-    return openGuideAtPath(result.filePaths[0])
+    const opened = await openGuideAtPath(result.filePaths[0])
+    setCurrentGuide(opened.guidePath, opened.guide)
+    createOrShowCommandWindow()
+    return opened
   })
 
   ipcMain.handle('guide:listRecent', async () => {
     return readRecentGuides()
+  })
+
+  ipcMain.handle('guide:createThread', async () => {
+    const current = getCurrentGuide()
+    if (!current) {
+      throw new Error('guide:createThread called with no current Guide set')
+    }
+
+    const { guide: updatedGuide, thread } = createThread(current.guide)
+    updateCurrentGuide(updatedGuide)
+    await writeManifest(current.guidePath, updatedGuide)
+
+    return { guide: updatedGuide, threadId: thread.id }
+  })
+
+  ipcMain.handle('guide:getCurrent', async (): Promise<CurrentGuideState | null> => {
+    return getCurrentGuide()
+  })
+
+  ipcMain.on('app:requestToggleOverview', () => {
+    getMainWindow()?.webContents.send('app:toggleOverview')
   })
 }
