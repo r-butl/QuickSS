@@ -19,6 +19,7 @@ function makeGuide(title: string): Guide {
 beforeEach(() => {
   useAppStore.setState({
     screen: 'picker',
+    previousScreen: 'picker',
     currentGuide: null,
     currentGuidePath: null
   })
@@ -76,5 +77,37 @@ describe('appStore', () => {
     expect(state.screen).toBe('picker')
     expect(state.currentGuide).toBeNull()
     expect(state.currentGuidePath).toBeNull()
+  })
+
+  it('openSettings navigates to settings and remembers the previous screen', () => {
+    const guide = makeGuide('My Guide')
+    useAppStore.getState().enterGuide('/guides/my-guide', guide)
+
+    useAppStore.getState().openSettings()
+
+    const state = useAppStore.getState()
+    expect(state.screen).toBe('settings')
+    expect(state.previousScreen).toBe('capture')
+  })
+
+  it('closeSettings returns to whichever screen was active before openSettings', () => {
+    useAppStore.getState().enterGuide('/guides/my-guide', makeGuide('My Guide'))
+    useAppStore.getState().toggleOverview()
+    expect(useAppStore.getState().screen).toBe('overview')
+
+    useAppStore.getState().openSettings()
+    expect(useAppStore.getState().screen).toBe('settings')
+
+    useAppStore.getState().closeSettings()
+    expect(useAppStore.getState().screen).toBe('overview')
+  })
+
+  it('openSettings called twice in a row keeps the original previous screen', () => {
+    useAppStore.getState().enterGuide('/guides/my-guide', makeGuide('My Guide'))
+
+    useAppStore.getState().openSettings()
+    useAppStore.getState().openSettings()
+
+    expect(useAppStore.getState().previousScreen).toBe('capture')
   })
 })

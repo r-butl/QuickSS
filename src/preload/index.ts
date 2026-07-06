@@ -11,9 +11,11 @@ import type {
   PendingCaptureResult,
   PrintData,
   RecentGuideEntry,
+  SettingsApi,
   StepContainer
 } from '../shared/guideApi'
 import type { Step } from '../shared/types'
+import type { AppSettings, HotkeyBindings } from '../shared/settings'
 
 // Typed API wrapping the app's `guide:*` IPC channels. This is the only
 // surface the renderer uses to talk to the main process for Guide
@@ -88,6 +90,15 @@ const guideApi: GuideApi = {
   }
 }
 
+// Typed API wrapping the app's `settings:*` IPC channels (Task 11). Kept
+// separate from `guideApi` since it addresses a different concern
+// (app-level settings, not Guide content) - see `SettingsApi`'s doc comment.
+const settingsApi: SettingsApi = {
+  getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
+  updateHotkeys: (updates: Partial<HotkeyBindings>): Promise<AppSettings> =>
+    ipcRenderer.invoke('settings:updateHotkeys', updates)
+}
+
 // Custom APIs for renderer
 const api = {}
 
@@ -99,6 +110,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
     contextBridge.exposeInMainWorld('guideApi', guideApi)
+    contextBridge.exposeInMainWorld('settingsApi', settingsApi)
   } catch (error) {
     console.error(error)
   }
@@ -109,4 +121,6 @@ if (process.contextIsolated) {
   window.api = api
   // @ts-ignore (define in dts)
   window.guideApi = guideApi
+  // @ts-ignore (define in dts)
+  window.settingsApi = settingsApi
 }

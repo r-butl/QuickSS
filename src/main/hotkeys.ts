@@ -1,4 +1,5 @@
 import { globalShortcut } from 'electron'
+import type { HotkeyBindings } from '../shared/settings'
 
 export interface CaptureHotkeyHandlers {
   onFullScreen: () => void
@@ -9,35 +10,24 @@ export interface CaptureHotkeyHandlers {
 }
 
 /**
- * Default Accelerator strings for the capture hotkeys (requirement 13).
- * These are defaults only — Task 13 (Settings panel) will make them
- * configurable. `CommandOrControl` is used so the same source works on both
- * macOS and Windows/Linux without per-OS branching. A real conflict check
- * against OS/app-reserved shortcuts requires human verification on real
- * machines — not attempted here.
+ * Registers the five global capture hotkeys using the given `bindings`
+ * (Task 11: configurable via the Settings panel - see `src/shared/settings.ts`
+ * for the defaults, and `src/main/settings.ts` for how they're persisted).
+ * `globalShortcut.register` returns `false` on failure (e.g. another app
+ * already owns the shortcut) rather than throwing, so each registration's
+ * return value is checked and failures are logged via `console.error`
+ * without stopping the rest from being registered.
  */
-const ACCELERATORS = {
-  fullScreen: 'CommandOrControl+Shift+F',
-  region: 'CommandOrControl+Shift+R',
-  cursorToggle: 'CommandOrControl+Shift+C',
-  newThread: 'CommandOrControl+Shift+N',
-  toggleOverview: 'CommandOrControl+Shift+O'
-} as const
-
-/**
- * Registers the five global capture hotkeys. `globalShortcut.register`
- * returns `false` on failure (e.g. another app already owns the shortcut)
- * rather than throwing, so each registration's return value is checked and
- * failures are logged via `console.error` without stopping the rest from
- * being registered.
- */
-export function registerCaptureHotkeys(handlers: CaptureHotkeyHandlers): void {
+export function registerCaptureHotkeys(
+  bindings: HotkeyBindings,
+  handlers: CaptureHotkeyHandlers
+): void {
   const registrations: Array<[string, () => void]> = [
-    [ACCELERATORS.fullScreen, handlers.onFullScreen],
-    [ACCELERATORS.region, handlers.onRegion],
-    [ACCELERATORS.cursorToggle, handlers.onCursorToggle],
-    [ACCELERATORS.newThread, handlers.onNewThread],
-    [ACCELERATORS.toggleOverview, handlers.onToggleOverview]
+    [bindings.fullScreen, handlers.onFullScreen],
+    [bindings.region, handlers.onRegion],
+    [bindings.cursorToggle, handlers.onCursorToggle],
+    [bindings.newThread, handlers.onNewThread],
+    [bindings.toggleOverview, handlers.onToggleOverview]
   ]
 
   for (const [accelerator, handler] of registrations) {
@@ -51,7 +41,9 @@ export function registerCaptureHotkeys(handlers: CaptureHotkeyHandlers): void {
 /**
  * Unregisters all global shortcuts registered by this app. Wired to
  * `app.on('will-quit')` in `src/main/index.ts` so hotkeys don't leak past
- * the app's lifetime.
+ * the app's lifetime, and also called before re-registering with new
+ * bindings when settings change (see `settings:updateHotkeys` in
+ * `src/main/ipc.ts`).
  */
 export function unregisterCaptureHotkeys(): void {
   globalShortcut.unregisterAll()

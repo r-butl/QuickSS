@@ -15,6 +15,9 @@ import type {
 import type { Step } from '../shared/types'
 import { createGuideFolder, readManifest, writeImage, writeManifest } from './persistence'
 import { addRecentGuide, readRecentGuides } from './recentGuides'
+import { readSettings, updateHotkeys } from './settings'
+import { reregisterHotkeys } from './hotkeyRegistration'
+import type { AppSettings, HotkeyBindings } from '../shared/settings'
 import {
   addStepToThread,
   createThread,
@@ -441,4 +444,18 @@ export function registerIpcHandlers(): void {
 
     return { title: pending.guide.title, threads }
   })
+
+  ipcMain.handle('settings:get', async (): Promise<AppSettings> => {
+    return readSettings()
+  })
+
+  ipcMain.handle(
+    'settings:updateHotkeys',
+    async (_event, updates: Partial<HotkeyBindings>): Promise<AppSettings> => {
+      const updatedSettings = await updateHotkeys(updates)
+      // Take effect immediately - no app restart required (requirement 9).
+      reregisterHotkeys(updatedSettings.hotkeys)
+      return updatedSettings
+    }
+  )
 }

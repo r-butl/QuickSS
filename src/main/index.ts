@@ -3,7 +3,9 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createNewThread, registerIpcHandlers } from './ipc'
-import { registerCaptureHotkeys, unregisterCaptureHotkeys } from './hotkeys'
+import { unregisterCaptureHotkeys } from './hotkeys'
+import { initHotkeys } from './hotkeyRegistration'
+import { readSettings } from './settings'
 import { captureFullScreen, captureRegion } from './capture'
 import { initCaptureFlow, startPendingCapture, toggleCursorVisible } from './captureFlow'
 import { createOrShowPreviewWindow, getPreviewWindow } from './windows/previewWindow'
@@ -48,7 +50,7 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -74,27 +76,31 @@ app.whenReady().then(() => {
     }
   })
 
-  registerCaptureHotkeys({
-    onFullScreen: () => {
-      captureFullScreen()
-        .then((result) => startPendingCapture(result))
-        .catch((err) => console.error('captureFullScreen failed', err))
+  const settings = await readSettings()
+  initHotkeys(
+    {
+      onFullScreen: () => {
+        captureFullScreen()
+          .then((result) => startPendingCapture(result))
+          .catch((err) => console.error('captureFullScreen failed', err))
+      },
+      onRegion: () => {
+        captureRegion()
+          .then((result) => startPendingCapture(result))
+          .catch((err) => console.error('captureRegion failed', err))
+      },
+      onCursorToggle: () => {
+        toggleCursorVisible()
+      },
+      onNewThread: () => {
+        createNewThread().catch((err) => console.error('createNewThread failed', err))
+      },
+      onToggleOverview: () => {
+        getMainWindow()?.webContents.send('app:toggleOverview')
+      }
     },
-    onRegion: () => {
-      captureRegion()
-        .then((result) => startPendingCapture(result))
-        .catch((err) => console.error('captureRegion failed', err))
-    },
-    onCursorToggle: () => {
-      toggleCursorVisible()
-    },
-    onNewThread: () => {
-      createNewThread().catch((err) => console.error('createNewThread failed', err))
-    },
-    onToggleOverview: () => {
-      getMainWindow()?.webContents.send('app:toggleOverview')
-    }
-  })
+    settings.hotkeys
+  )
 
   createWindow()
 

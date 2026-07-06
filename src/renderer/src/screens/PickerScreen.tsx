@@ -10,6 +10,7 @@ import type { RecentGuideEntry } from '../../../shared/guideApi'
  */
 function PickerScreen(): React.JSX.Element {
   const enterGuide = useAppStore((state) => state.enterGuide)
+  const openSettings = useAppStore((state) => state.openSettings)
   const [title, setTitle] = useState('')
   const [recentGuides, setRecentGuides] = useState<RecentGuideEntry[]>([])
   const [isBusy, setIsBusy] = useState(false)
@@ -70,7 +71,12 @@ function PickerScreen(): React.JSX.Element {
 
   return (
     <div>
-      <h1>Documentation Capture Tool</h1>
+      <header>
+        <h1>Documentation Capture Tool</h1>
+        <button type="button" onClick={openSettings}>
+          Settings
+        </button>
+      </header>
 
       {error && <p role="alert">{error}</p>}
 

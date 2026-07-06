@@ -1,5 +1,6 @@
 import type { Guide, Step } from './types'
 import type { StepContainer } from './manifest'
+import type { AppSettings, HotkeyBindings } from './settings'
 
 export type { StepContainer }
 
@@ -182,4 +183,21 @@ export interface GuideApi {
    * calling `printToPDF()` on an empty page and producing a blank PDF.
    */
   notifyPrintFailed: (message: string) => void
+}
+
+/**
+ * Small, separately-exposed API surface for the Settings screen (Task 11),
+ * kept apart from `GuideApi` since it addresses an entirely different
+ * concern (app-level settings, not Guide content) - exposed via
+ * `contextBridge` as `window.settingsApi`.
+ */
+export interface SettingsApi {
+  /** Fetches the current persisted settings (defaults if none saved yet). */
+  getSettings: () => Promise<AppSettings>
+  /**
+   * Merges `updates` into the persisted hotkey bindings and re-registers
+   * the global hotkeys immediately (no app restart required). Returns the
+   * full updated settings.
+   */
+  updateHotkeys: (updates: Partial<HotkeyBindings>) => Promise<AppSettings>
 }

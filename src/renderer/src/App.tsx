@@ -3,6 +3,7 @@ import { useAppStore } from './store/appStore'
 import PickerScreen from './screens/PickerScreen'
 import CaptureScreen from './screens/CaptureScreen'
 import OverviewScreen from './screens/OverviewScreen'
+import SettingsScreen from './screens/SettingsScreen'
 
 function App(): React.JSX.Element {
   const screen = useAppStore((state) => state.screen)
@@ -22,6 +23,8 @@ function App(): React.JSX.Element {
       return <CaptureScreen />
     case 'overview':
       return <OverviewScreen />
+    case 'settings':
+      return <SettingsScreen />
     case 'picker':
     default:
       return <PickerScreen />
