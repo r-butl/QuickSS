@@ -4,9 +4,64 @@ import {
   createThread,
   addStepToThread,
   parseManifest,
-  serializeManifest
+  serializeManifest,
+  getContainerStepIds,
+  reorderStep,
+  moveStep,
+  renameThread,
+  updateStep,
+  updateStepCrop,
+  deleteStep,
+  type StepContainer
 } from './manifest'
 import { Guide, Step } from './types'
+
+function makeStep(id: string, overrides: Partial<Step> = {}): Step {
+  return {
+    id,
+    imageFile: `images/${id}.png`,
+    caption: `Caption ${id}`,
+    description: `Description ${id}`,
+    cursor: { x: 0, y: 0, visible: false },
+    crop: null,
+    createdAt: new Date().toISOString(),
+    ...overrides
+  }
+}
+
+/**
+ * Builds a Guide with two threads ("A" with steps a1,a2,a3 and "B" with
+ * steps b1,b2) plus an unsorted bucket with steps u1,u2 - enough
+ * topology to exercise reorder/move across every kind of container pair.
+ */
+function makeFixtureGuide(): { guide: Guide; threadA: string; threadB: string } {
+  let guide = createGuide('Fixture Guide')
+  const { guide: g1, thread: threadA } = createThread(guide, 'Thread A')
+  const { guide: g2, thread: threadB } = createThread(g1, 'Thread B')
+  guide = g2
+
+  for (const id of ['a1', 'a2', 'a3']) {
+    guide = addStepToThread(guide, threadA.id, makeStep(id))
+  }
+  for (const id of ['b1', 'b2']) {
+    guide = addStepToThread(guide, threadB.id, makeStep(id))
+  }
+
+  // Manually seed the unsorted bucket + its steps (no addStepToThread
+  // equivalent for unsorted exists yet - this task adds the first
+  // functions that address it).
+  guide = {
+    ...guide,
+    steps: {
+      ...guide.steps,
+      u1: makeStep('u1'),
+      u2: makeStep('u2')
+    },
+    unsorted: { stepIds: ['u1', 'u2'] }
+  }
+
+  return { guide, threadA: threadA.id, threadB: threadB.id }
+}
 
 describe('createGuide', () => {
   it('produces valid shape with manifestVersion: 1', () => {
@@ -285,5 +340,318 @@ describe('parseManifest validation', () => {
     const parsed = parseManifest(serialized)
 
     expect(parsed.manifestVersion).toBe(1)
+  })
+})
+
+describe('getContainerStepIds', () => {
+  it('returns a thread container stepIds array', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    expect(getContainerStepIds(guide, { kind: 'thread', threadId: threadA })).toEqual([
+      'a1',
+      'a2',
+      'a3'
+    ])
+  })
+
+  it('returns the unsorted container stepIds array', () => {
+    const { guide } = makeFixtureGuide()
+    expect(getContainerStepIds(guide, { kind: 'unsorted' })).toEqual(['u1', 'u2'])
+  })
+
+  it('throws on unknown threadId', () => {
+    const { guide } = makeFixtureGuide()
+    expect(() =>
+      getContainerStepIds(guide, { kind: 'thread', threadId: 'nonexistent' })
+    ).toThrowError('Thread with id "nonexistent" not found')
+  })
+})
+
+describe('reorderStep', () => {
+  it('reorders within a thread', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const container: StepContainer = { kind: 'thread', threadId: threadA }
+    const updated = reorderStep(guide, container, 0, 2)
+
+    expect(getContainerStepIds(updated, container)).toEqual(['a2', 'a3', 'a1'])
+  })
+
+  it('reorders within unsorted', () => {
+    const { guide } = makeFixtureGuide()
+    const container: StepContainer = { kind: 'unsorted' }
+    const updated = reorderStep(guide, container, 1, 0)
+
+    expect(getContainerStepIds(updated, container)).toEqual(['u2', 'u1'])
+  })
+
+  it('throws on out-of-range fromIndex', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const container: StepContainer = { kind: 'thread', threadId: threadA }
+    expect(() => reorderStep(guide, container, 10, 0)).toThrowError(/fromIndex 10 out of range/)
+    expect(() => reorderStep(guide, container, -1, 0)).toThrowError(/fromIndex -1 out of range/)
+  })
+
+  it('throws on out-of-range toIndex', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const container: StepContainer = { kind: 'thread', threadId: threadA }
+    expect(() => reorderStep(guide, container, 0, 10)).toThrowError(/toIndex 10 out of range/)
+    expect(() => reorderStep(guide, container, 0, -1)).toThrowError(/toIndex -1 out of range/)
+  })
+
+  it('throws on unknown threadId', () => {
+    const { guide } = makeFixtureGuide()
+    expect(() =>
+      reorderStep(guide, { kind: 'thread', threadId: 'nonexistent' }, 0, 1)
+    ).toThrowError('Thread with id "nonexistent" not found')
+  })
+
+  it('does not mutate the input Guide', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const guideCopy = JSON.parse(JSON.stringify(guide)) as Guide
+    const container: StepContainer = { kind: 'thread', threadId: threadA }
+
+    const updated = reorderStep(guide, container, 0, 2)
+
+    expect(guide).toEqual(guideCopy)
+    expect(guide).not.toBe(updated)
+    expect(guide.threads.find((t) => t.id === threadA)?.stepIds).toEqual(['a1', 'a2', 'a3'])
+  })
+})
+
+describe('moveStep', () => {
+  it('moves a step between two threads', () => {
+    const { guide, threadA, threadB } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const to: StepContainer = { kind: 'thread', threadId: threadB }
+
+    const updated = moveStep(guide, 'a2', from, to)
+
+    expect(getContainerStepIds(updated, from)).toEqual(['a1', 'a3'])
+    expect(getContainerStepIds(updated, to)).toEqual(['b1', 'b2', 'a2'])
+  })
+
+  it('moves a step at a specific toIndex', () => {
+    const { guide, threadA, threadB } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const to: StepContainer = { kind: 'thread', threadId: threadB }
+
+    const updated = moveStep(guide, 'a2', from, to, 0)
+
+    expect(getContainerStepIds(updated, to)).toEqual(['a2', 'b1', 'b2'])
+  })
+
+  it('moves a step from a thread into unsorted', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const to: StepContainer = { kind: 'unsorted' }
+
+    const updated = moveStep(guide, 'a1', from, to)
+
+    expect(getContainerStepIds(updated, from)).toEqual(['a2', 'a3'])
+    expect(getContainerStepIds(updated, to)).toEqual(['u1', 'u2', 'a1'])
+  })
+
+  it('moves a step from unsorted back into a thread', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'unsorted' }
+    const to: StepContainer = { kind: 'thread', threadId: threadA }
+
+    const updated = moveStep(guide, 'u1', from, to)
+
+    expect(getContainerStepIds(updated, from)).toEqual(['u2'])
+    expect(getContainerStepIds(updated, to)).toEqual(['a1', 'a2', 'a3', 'u1'])
+  })
+
+  it('move-with-no-destination (unsorted) lands the step in unsorted', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const to: StepContainer = { kind: 'unsorted' }
+
+    const updated = moveStep(guide, 'a3', from, to)
+
+    expect(getContainerStepIds(updated, { kind: 'unsorted' })).toContain('a3')
+    expect(getContainerStepIds(updated, from)).not.toContain('a3')
+  })
+
+  it('reorders in place when from and to are the same container', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const container: StepContainer = { kind: 'thread', threadId: threadA }
+
+    const updated = moveStep(guide, 'a1', container, container, 2)
+
+    expect(getContainerStepIds(updated, container)).toEqual(['a2', 'a3', 'a1'])
+  })
+
+  it('throws if stepId is not actually in the from container', () => {
+    const { guide, threadA, threadB } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const to: StepContainer = { kind: 'thread', threadId: threadB }
+
+    expect(() => moveStep(guide, 'b1', from, to)).toThrowError(
+      'Step with id "b1" not found in the specified source container'
+    )
+  })
+
+  it('throws on out-of-range toIndex', () => {
+    const { guide, threadA, threadB } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const to: StepContainer = { kind: 'thread', threadId: threadB }
+
+    expect(() => moveStep(guide, 'a1', from, to, 10)).toThrowError(/toIndex 10 out of range/)
+    expect(() => moveStep(guide, 'a1', from, to, -1)).toThrowError(/toIndex -1 out of range/)
+  })
+
+  it('throws on unknown threadId in from or to', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const badTo: StepContainer = { kind: 'thread', threadId: 'nonexistent' }
+
+    expect(() => moveStep(guide, 'a1', from, badTo)).toThrowError(
+      'Thread with id "nonexistent" not found'
+    )
+  })
+
+  it('does not mutate the input Guide', () => {
+    const { guide, threadA, threadB } = makeFixtureGuide()
+    const guideCopy = JSON.parse(JSON.stringify(guide)) as Guide
+    const from: StepContainer = { kind: 'thread', threadId: threadA }
+    const to: StepContainer = { kind: 'thread', threadId: threadB }
+
+    const updated = moveStep(guide, 'a2', from, to)
+
+    expect(guide).toEqual(guideCopy)
+    expect(guide).not.toBe(updated)
+    expect(guide.threads.find((t) => t.id === threadA)?.stepIds).toEqual(['a1', 'a2', 'a3'])
+    expect(guide.threads.find((t) => t.id === threadB)?.stepIds).toEqual(['b1', 'b2'])
+  })
+})
+
+describe('renameThread', () => {
+  it('updates the thread name', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const updated = renameThread(guide, threadA, 'Renamed Thread')
+
+    expect(updated.threads.find((t) => t.id === threadA)?.name).toBe('Renamed Thread')
+  })
+
+  it('throws on unknown threadId', () => {
+    const { guide } = makeFixtureGuide()
+    expect(() => renameThread(guide, 'nonexistent', 'New Name')).toThrowError(
+      'Thread with id "nonexistent" not found'
+    )
+  })
+
+  it('does not mutate the input Guide', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const guideCopy = JSON.parse(JSON.stringify(guide)) as Guide
+
+    const updated = renameThread(guide, threadA, 'Renamed Thread')
+
+    expect(guide).toEqual(guideCopy)
+    expect(guide).not.toBe(updated)
+    expect(guide.threads.find((t) => t.id === threadA)?.name).toBe('Thread A')
+  })
+})
+
+describe('updateStep', () => {
+  it('merges caption and description updates', () => {
+    const { guide } = makeFixtureGuide()
+    const updated = updateStep(guide, 'a1', { caption: 'New Caption' })
+
+    expect(updated.steps['a1'].caption).toBe('New Caption')
+    expect(updated.steps['a1'].description).toBe('Description a1')
+  })
+
+  it('updates both fields at once', () => {
+    const { guide } = makeFixtureGuide()
+    const updated = updateStep(guide, 'a1', {
+      caption: 'New Caption',
+      description: 'New Description'
+    })
+
+    expect(updated.steps['a1'].caption).toBe('New Caption')
+    expect(updated.steps['a1'].description).toBe('New Description')
+  })
+
+  it('throws on unknown stepId', () => {
+    const { guide } = makeFixtureGuide()
+    expect(() => updateStep(guide, 'nonexistent', { caption: 'x' })).toThrowError(
+      'Step with id "nonexistent" not found'
+    )
+  })
+
+  it('does not mutate the input Guide', () => {
+    const { guide } = makeFixtureGuide()
+    const guideCopy = JSON.parse(JSON.stringify(guide)) as Guide
+
+    const updated = updateStep(guide, 'a1', { caption: 'New Caption' })
+
+    expect(guide).toEqual(guideCopy)
+    expect(guide).not.toBe(updated)
+    expect(guide.steps['a1'].caption).toBe('Caption a1')
+  })
+})
+
+describe('updateStepCrop', () => {
+  it('updates the crop rectangle', () => {
+    const { guide } = makeFixtureGuide()
+    const crop = { x: 1, y: 2, width: 3, height: 4 }
+    const updated = updateStepCrop(guide, 'a1', crop)
+
+    expect(updated.steps['a1'].crop).toEqual(crop)
+  })
+
+  it('throws on unknown stepId', () => {
+    const { guide } = makeFixtureGuide()
+    expect(() => updateStepCrop(guide, 'nonexistent', null)).toThrowError(
+      'Step with id "nonexistent" not found'
+    )
+  })
+
+  it('does not mutate the input Guide', () => {
+    const { guide } = makeFixtureGuide()
+    const guideCopy = JSON.parse(JSON.stringify(guide)) as Guide
+
+    const updated = updateStepCrop(guide, 'a1', { x: 1, y: 2, width: 3, height: 4 })
+
+    expect(guide).toEqual(guideCopy)
+    expect(guide).not.toBe(updated)
+    expect(guide.steps['a1'].crop).toBeNull()
+  })
+})
+
+describe('deleteStep', () => {
+  it('removes the step from guide.steps and its thread container', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const updated = deleteStep(guide, 'a2')
+
+    expect(updated.steps).not.toHaveProperty('a2')
+    expect(updated.threads.find((t) => t.id === threadA)?.stepIds).toEqual(['a1', 'a3'])
+  })
+
+  it('removes the step from guide.steps and the unsorted container', () => {
+    const { guide } = makeFixtureGuide()
+    const updated = deleteStep(guide, 'u1')
+
+    expect(updated.steps).not.toHaveProperty('u1')
+    expect(updated.unsorted.stepIds).toEqual(['u2'])
+  })
+
+  it('throws on unknown stepId', () => {
+    const { guide } = makeFixtureGuide()
+    expect(() => deleteStep(guide, 'nonexistent')).toThrowError(
+      'Step with id "nonexistent" not found'
+    )
+  })
+
+  it('does not mutate the input Guide', () => {
+    const { guide, threadA } = makeFixtureGuide()
+    const guideCopy = JSON.parse(JSON.stringify(guide)) as Guide
+
+    const updated = deleteStep(guide, 'a2')
+
+    expect(guide).toEqual(guideCopy)
+    expect(guide).not.toBe(updated)
+    expect(guide.steps).toHaveProperty('a2')
+    expect(guide.threads.find((t) => t.id === threadA)?.stepIds).toEqual(['a1', 'a2', 'a3'])
   })
 })

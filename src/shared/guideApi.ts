@@ -1,4 +1,7 @@
 import type { Guide, Step } from './types'
+import type { StepContainer } from './manifest'
+
+export type { StepContainer }
 
 /**
  * Shared type contract for the `guideApi` surface exposed by the preload
@@ -50,6 +53,15 @@ export interface ConfirmCaptureResult {
   step: Step
 }
 
+/**
+ * Shape returned by every `editor:*` IPC handler (Task 8) - just the
+ * updated Guide, since the main process is the source of truth and
+ * broadcasts `guide:updated` separately anyway.
+ */
+export interface EditorActionResult {
+  guide: Guide
+}
+
 export interface GuideApi {
   create: (title: string, basePath?: string) => Promise<GuideResult>
   open: (guidePath: string) => Promise<GuideResult>
@@ -83,4 +95,31 @@ export interface GuideApi {
    * unsubscribe function.
    */
   onCursorToggled: (callback: (cursorVisible: boolean) => void) => () => void
+  /** Reorders a step within a single thread/unsorted container. */
+  reorderStep: (
+    container: StepContainer,
+    fromIndex: number,
+    toIndex: number
+  ) => Promise<EditorActionResult>
+  /** Moves a step between two containers (thread/unsorted), including into/out of Unsorted. */
+  moveStep: (
+    stepId: string,
+    from: StepContainer,
+    to: StepContainer,
+    toIndex?: number
+  ) => Promise<EditorActionResult>
+  /** Renames a thread. */
+  renameThread: (threadId: string, newName: string) => Promise<EditorActionResult>
+  /** Updates a step's caption/description. */
+  updateStep: (
+    stepId: string,
+    updates: Partial<Pick<Step, 'caption' | 'description'>>
+  ) => Promise<EditorActionResult>
+  /** Deletes a step from the Guide and whichever container holds it. */
+  deleteStep: (stepId: string) => Promise<EditorActionResult>
+  /**
+   * Reads a Step's image file off disk and returns it as a
+   * `data:image/png;base64,...` URL for direct use in an `<img src>`.
+   */
+  readImage: (guidePath: string, imageFile: string) => Promise<string>
 }

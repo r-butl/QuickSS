@@ -5,11 +5,14 @@ import type {
   ConfirmCaptureResult,
   CreateThreadResult,
   CurrentGuideResult,
+  EditorActionResult,
   GuideApi,
   GuideResult,
   PendingCaptureResult,
-  RecentGuideEntry
+  RecentGuideEntry,
+  StepContainer
 } from '../shared/guideApi'
+import type { Step } from '../shared/types'
 
 // Typed API wrapping the app's `guide:*` IPC channels. This is the only
 // surface the renderer uses to talk to the main process for Guide
@@ -46,7 +49,30 @@ const guideApi: GuideApi = {
       callback(cursorVisible)
     ipcRenderer.on('preview:cursorToggled', listener)
     return () => ipcRenderer.removeListener('preview:cursorToggled', listener)
-  }
+  },
+  reorderStep: (
+    container: StepContainer,
+    fromIndex: number,
+    toIndex: number
+  ): Promise<EditorActionResult> =>
+    ipcRenderer.invoke('editor:reorderStep', container, fromIndex, toIndex),
+  moveStep: (
+    stepId: string,
+    from: StepContainer,
+    to: StepContainer,
+    toIndex?: number
+  ): Promise<EditorActionResult> =>
+    ipcRenderer.invoke('editor:moveStep', stepId, from, to, toIndex),
+  renameThread: (threadId: string, newName: string): Promise<EditorActionResult> =>
+    ipcRenderer.invoke('editor:renameThread', threadId, newName),
+  updateStep: (
+    stepId: string,
+    updates: Partial<Pick<Step, 'caption' | 'description'>>
+  ): Promise<EditorActionResult> => ipcRenderer.invoke('editor:updateStep', stepId, updates),
+  deleteStep: (stepId: string): Promise<EditorActionResult> =>
+    ipcRenderer.invoke('editor:deleteStep', stepId),
+  readImage: (guidePath: string, imageFile: string): Promise<string> =>
+    ipcRenderer.invoke('image:read', guidePath, imageFile)
 }
 
 // Custom APIs for renderer

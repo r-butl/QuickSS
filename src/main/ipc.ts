@@ -5,13 +5,23 @@ import type {
   ConfirmCaptureInput,
   ConfirmCaptureResult,
   CreateThreadResult,
+  EditorActionResult,
   GuideResult,
-  PendingCaptureResult
+  PendingCaptureResult,
+  StepContainer
 } from '../shared/guideApi'
 import type { Step } from '../shared/types'
 import { createGuideFolder, readManifest, writeImage, writeManifest } from './persistence'
 import { addRecentGuide, readRecentGuides } from './recentGuides'
-import { addStepToThread, createThread } from '../shared/manifest'
+import {
+  addStepToThread,
+  createThread,
+  deleteStep,
+  moveStep,
+  renameThread,
+  reorderStep,
+  updateStep
+} from '../shared/manifest'
 import { ensureThreadForCapture } from './capture'
 import {
   getActiveThreadId,
@@ -202,4 +212,108 @@ export function registerIpcHandlers(): void {
     clearPendingCapture()
     hidePreviewWindow()
   })
+
+  ipcMain.handle(
+    'editor:reorderStep',
+    async (
+      _event,
+      container: StepContainer,
+      fromIndex: number,
+      toIndex: number
+    ): Promise<EditorActionResult> => {
+      const current = getCurrentGuide()
+      if (!current) {
+        throw new Error('editor:reorderStep called with no current Guide set')
+      }
+
+      const updatedGuide = reorderStep(current.guide, container, fromIndex, toIndex)
+      await writeManifest(current.guidePath, updatedGuide)
+      updateCurrentGuide(updatedGuide)
+
+      return { guide: updatedGuide }
+    }
+  )
+
+  ipcMain.handle(
+    'editor:moveStep',
+    async (
+      _event,
+      stepId: string,
+      from: StepContainer,
+      to: StepContainer,
+      toIndex?: number
+    ): Promise<EditorActionResult> => {
+      const current = getCurrentGuide()
+      if (!current) {
+        throw new Error('editor:moveStep called with no current Guide set')
+      }
+
+      const updatedGuide = moveStep(current.guide, stepId, from, to, toIndex)
+      await writeManifest(current.guidePath, updatedGuide)
+      updateCurrentGuide(updatedGuide)
+
+      return { guide: updatedGuide }
+    }
+  )
+
+  ipcMain.handle(
+    'editor:renameThread',
+    async (_event, threadId: string, newName: string): Promise<EditorActionResult> => {
+      const current = getCurrentGuide()
+      if (!current) {
+        throw new Error('editor:renameThread called with no current Guide set')
+      }
+
+      const updatedGuide = renameThread(current.guide, threadId, newName)
+      await writeManifest(current.guidePath, updatedGuide)
+      updateCurrentGuide(updatedGuide)
+
+      return { guide: updatedGuide }
+    }
+  )
+
+  ipcMain.handle(
+    'editor:updateStep',
+    async (
+      _event,
+      stepId: string,
+      updates: Partial<Pick<Step, 'caption' | 'description'>>
+    ): Promise<EditorActionResult> => {
+      const current = getCurrentGuide()
+      if (!current) {
+        throw new Error('editor:updateStep called with no current Guide set')
+      }
+
+      const updatedGuide = updateStep(current.guide, stepId, updates)
+      await writeManifest(current.guidePath, updatedGuide)
+      updateCurrentGuide(updatedGuide)
+
+      return { guide: updatedGuide }
+    }
+  )
+
+  ipcMain.handle(
+    'editor:deleteStep',
+    async (_event, stepId: string): Promise<EditorActionResult> => {
+      const current = getCurrentGuide()
+      if (!current) {
+        throw new Error('editor:deleteStep called with no current Guide set')
+      }
+
+      const updatedGuide = deleteStep(current.guide, stepId)
+      await writeManifest(current.guidePath, updatedGuide)
+      updateCurrentGuide(updatedGuide)
+
+      return { guide: updatedGuide }
+    }
+  )
+
+  ipcMain.handle(
+    'image:read',
+    async (_event, guidePath: string, imageFile: string): Promise<string> => {
+      const imagePath = path.join(guidePath, imageFile)
+      const buffer = await fs.readFile(imagePath)
+      return `data:image/png;base64,${buffer.toString('base64')}`
+    }
+  )
 }
