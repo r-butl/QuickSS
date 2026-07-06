@@ -1,9 +1,10 @@
 {
   "name": "doc-capture-tool",
   "version": "0.1.0",
-  "description": "Documentation Capture Tool - an Electron-based screenshot/step capture app for building step-by-step guides",
+  "description": "Open-source, Electron-based alternative to Scribe for capturing step-by-step documentation guides.",
   "main": "./out/main/index.js",
   "author": "",
+  "license": "MIT",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
@@ -17,8 +18,8 @@
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

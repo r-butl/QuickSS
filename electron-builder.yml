@@ -5,6 +5,7 @@ directories:
 files:
   - '!**/.vscode/*'
   - '!src/*'
+  - '!.superpowers/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
@@ -21,6 +22,10 @@ nsis:
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
+  # v1 ships unsigned (no Apple Developer Program enrollment for this pass).
+  # identity: null forces an unsigned build even if a local Developer ID
+  # certificate happens to be present on the build machine - see Task 12 brief.
+  identity: null
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
