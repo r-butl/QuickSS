@@ -62,6 +62,33 @@ export interface EditorActionResult {
   guide: Guide
 }
 
+/**
+ * Shape consumed by the hidden print-view renderer (`PrintView.tsx`,
+ * mounted at `?windowRole=export-print`) via `export:getPrintData`.
+ * Unsorted-bucket steps are already excluded by the main process (same
+ * rule as `exportGuideAsMarkdown` - see `src/main/export.ts`), and each
+ * step's image is pre-converted to a `data:image/png;base64,...` URL so
+ * the print view renders correctly regardless of where the final exported
+ * file ends up on disk.
+ */
+export interface PrintStepData {
+  id: string
+  caption: string
+  description: string
+  imageDataUrl: string
+}
+
+export interface PrintThreadData {
+  id: string
+  name: string
+  steps: PrintStepData[]
+}
+
+export interface PrintData {
+  title: string
+  threads: PrintThreadData[]
+}
+
 export interface GuideApi {
   create: (title: string, basePath?: string) => Promise<GuideResult>
   open: (guidePath: string) => Promise<GuideResult>
@@ -128,4 +155,25 @@ export interface GuideApi {
    * `data:image/png;base64,...` URL for direct use in an `<img src>`.
    */
   readImage: (guidePath: string, imageFile: string) => Promise<string>
+  /**
+   * Exports the current Guide as JSON via a save dialog. Resolves to the
+   * saved path, or `null` if the user cancelled the dialog.
+   */
+  exportJson: () => Promise<string | null>
+  /** Same as `exportJson`, but as the Markdown "tutorial" template. */
+  exportMarkdown: () => Promise<string | null>
+  /** Same as `exportJson`, but rendered to PDF via the hidden print view. */
+  exportPdf: () => Promise<string | null>
+  /**
+   * Fetches the current Guide's print-ready data (threads/steps, unsorted
+   * excluded, images pre-converted to base64 data URLs). Used only by the
+   * hidden print-view renderer (`PrintView.tsx`).
+   */
+  getPrintData: () => Promise<PrintData>
+  /**
+   * Sent by the print-view renderer once it has finished fetching
+   * `getPrintData()` and rendering the result, so the main process knows
+   * it's safe to call `printToPDF()`.
+   */
+  notifyPrintReady: () => void
 }

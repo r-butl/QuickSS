@@ -340,6 +340,7 @@ function OverviewScreen(): React.JSX.Element {
   const [current, setCurrent] = useState<CurrentGuideResult | null>(null)
   const [activeStepId, setActiveStepId] = useState<string | null>(null)
   const [croppingStepId, setCroppingStepId] = useState<string | null>(null)
+  const [exportStatus, setExportStatus] = useState<string | null>(null)
   const imageCache = useRef(new Map<string, string>())
 
   useEffect(() => {
@@ -400,6 +401,23 @@ function OverviewScreen(): React.JSX.Element {
     }
   }
 
+  async function handleExport(kind: 'json' | 'markdown' | 'pdf'): Promise<void> {
+    setExportStatus(`Exporting ${kind}…`)
+    try {
+      const exporter =
+        kind === 'json'
+          ? window.guideApi.exportJson
+          : kind === 'markdown'
+            ? window.guideApi.exportMarkdown
+            : window.guideApi.exportPdf
+      const savedPath = await exporter()
+      setExportStatus(savedPath ? `Exported to ${savedPath}` : 'Export cancelled.')
+    } catch (error: unknown) {
+      console.error(`Failed to export ${kind}:`, error)
+      setExportStatus('Export failed.')
+    }
+  }
+
   if (!guide || !guidePath) {
     return (
       <div>
@@ -417,6 +435,19 @@ function OverviewScreen(): React.JSX.Element {
   return (
     <div>
       <AppHeader />
+      <section style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 16px' }}>
+        <span style={{ fontWeight: 'bold' }}>Export:</span>
+        <button type="button" onClick={() => handleExport('json')}>
+          JSON
+        </button>
+        <button type="button" onClick={() => handleExport('markdown')}>
+          Markdown
+        </button>
+        <button type="button" onClick={() => handleExport('pdf')}>
+          PDF
+        </button>
+        {exportStatus ? <span style={{ fontSize: 12, color: '#666' }}>{exportStatus}</span> : null}
+      </section>
       <main>
         <DndContext
           sensors={sensors}

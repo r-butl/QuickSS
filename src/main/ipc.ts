@@ -8,6 +8,8 @@ import type {
   EditorActionResult,
   GuideResult,
   PendingCaptureResult,
+  PrintData,
+  PrintThreadData,
   StepContainer
 } from '../shared/guideApi'
 import type { Step } from '../shared/types'
@@ -36,6 +38,12 @@ import { clearPendingCapture, getPendingCapture } from './captureFlow'
 import { createOrShowCommandWindow } from './windows/commandWindow'
 import { hidePreviewWindow } from './windows/previewWindow'
 import { getMainWindow } from './windows/windowRegistry'
+import {
+  exportGuideAsJson,
+  exportGuideAsMarkdown,
+  exportGuideAsPdf,
+  getPendingPrintData
+} from './export'
 
 export type { GuideResult }
 
@@ -48,6 +56,17 @@ async function getDefaultGuidesBasePath(): Promise<string> {
   const basePath = path.join(app.getPath('documents'), 'Guides')
   await fs.mkdir(basePath, { recursive: true })
   return basePath
+}
+
+/**
+ * Strips characters that are invalid/awkward in filenames on any of the
+ * three major platforms, for use in export save-dialog default filenames.
+ * Falls back to `"guide"` if the title sanitizes down to nothing (e.g. a
+ * title made entirely of punctuation).
+ */
+function sanitizeFilename(title: string): string {
+  const sanitized = title.replace(/[\\/:*?"<>|]/g, '_').trim()
+  return sanitized || 'guide'
 }
 
 async function openGuideAtPath(guidePath: string): Promise<GuideResult> {
@@ -333,4 +352,93 @@ export function registerIpcHandlers(): void {
       return `data:image/png;base64,${buffer.toString('base64')}`
     }
   )
+
+  ipcMain.handle('export:json', async (event): Promise<string | null> => {
+    const current = getCurrentGuide()
+    if (!current) {
+      throw new Error('export:json called with no current Guide set')
+    }
+
+    const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const defaultPath = path.join(
+      current.guidePath,
+      `${sanitizeFilename(current.guide.title)}.json`
+    )
+    const dialogOptions = { defaultPath, filters: [{ name: 'JSON', extensions: ['json'] }] }
+    const result = window
+      ? await dialog.showSaveDialog(window, dialogOptions)
+      : await dialog.showSaveDialog(dialogOptions)
+
+    if (result.canceled || !result.filePath) return null
+
+    await fs.writeFile(result.filePath, exportGuideAsJson(current.guide), 'utf-8')
+    return result.filePath
+  })
+
+  ipcMain.handle('export:markdown', async (event): Promise<string | null> => {
+    const current = getCurrentGuide()
+    if (!current) {
+      throw new Error('export:markdown called with no current Guide set')
+    }
+
+    const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const defaultPath = path.join(current.guidePath, `${sanitizeFilename(current.guide.title)}.md`)
+    const dialogOptions = { defaultPath, filters: [{ name: 'Markdown', extensions: ['md'] }] }
+    const result = window
+      ? await dialog.showSaveDialog(window, dialogOptions)
+      : await dialog.showSaveDialog(dialogOptions)
+
+    if (result.canceled || !result.filePath) return null
+
+    await fs.writeFile(result.filePath, exportGuideAsMarkdown(current.guide), 'utf-8')
+    return result.filePath
+  })
+
+  ipcMain.handle('export:pdf', async (event): Promise<string | null> => {
+    const current = getCurrentGuide()
+    if (!current) {
+      throw new Error('export:pdf called with no current Guide set')
+    }
+
+    const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const defaultPath = path.join(current.guidePath, `${sanitizeFilename(current.guide.title)}.pdf`)
+    const dialogOptions = { defaultPath, filters: [{ name: 'PDF', extensions: ['pdf'] }] }
+    const result = window
+      ? await dialog.showSaveDialog(window, dialogOptions)
+      : await dialog.showSaveDialog(dialogOptions)
+
+    if (result.canceled || !result.filePath) return null
+
+    const pdfBuffer = await exportGuideAsPdf(current.guide, current.guidePath)
+    await fs.writeFile(result.filePath, pdfBuffer)
+    return result.filePath
+  })
+
+  ipcMain.handle('export:getPrintData', async (): Promise<PrintData> => {
+    const pending = getPendingPrintData()
+    if (!pending) {
+      throw new Error('export:getPrintData called with no pending print data set')
+    }
+
+    const threads: PrintThreadData[] = []
+    for (const thread of pending.guide.threads) {
+      const steps: PrintThreadData['steps'] = []
+      for (const stepId of thread.stepIds) {
+        const step = pending.guide.steps[stepId]
+        if (!step) continue
+
+        const imagePath = path.join(pending.guidePath, step.imageFile)
+        const buffer = await fs.readFile(imagePath)
+        steps.push({
+          id: step.id,
+          caption: step.caption,
+          description: step.description,
+          imageDataUrl: `data:image/png;base64,${buffer.toString('base64')}`
+        })
+      }
+      threads.push({ id: thread.id, name: thread.name, steps })
+    }
+
+    return { title: pending.guide.title, threads }
+  })
 }

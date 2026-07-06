@@ -9,6 +9,7 @@ import type {
   GuideApi,
   GuideResult,
   PendingCaptureResult,
+  PrintData,
   RecentGuideEntry,
   StepContainer
 } from '../shared/guideApi'
@@ -74,7 +75,14 @@ const guideApi: GuideApi = {
   deleteStep: (stepId: string): Promise<EditorActionResult> =>
     ipcRenderer.invoke('editor:deleteStep', stepId),
   readImage: (guidePath: string, imageFile: string): Promise<string> =>
-    ipcRenderer.invoke('image:read', guidePath, imageFile)
+    ipcRenderer.invoke('image:read', guidePath, imageFile),
+  exportJson: (): Promise<string | null> => ipcRenderer.invoke('export:json'),
+  exportMarkdown: (): Promise<string | null> => ipcRenderer.invoke('export:markdown'),
+  exportPdf: (): Promise<string | null> => ipcRenderer.invoke('export:pdf'),
+  getPrintData: (): Promise<PrintData> => ipcRenderer.invoke('export:getPrintData'),
+  notifyPrintReady: (): void => {
+    ipcRenderer.send('export:printReady')
+  }
 }
 
 // Custom APIs for renderer
