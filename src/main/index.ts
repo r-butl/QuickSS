@@ -3,6 +3,8 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './ipc'
+import { registerCaptureHotkeys, unregisterCaptureHotkeys } from './hotkeys'
+import { captureFullScreen, captureRegion } from './capture'
 
 function createWindow(): void {
   // Create the browser window.
@@ -54,6 +56,31 @@ app.whenReady().then(() => {
 
   registerIpcHandlers()
 
+  // Placeholder handlers: full integration with the preview window and
+  // Guide state comes in Phase 5. For now these just prove the capture
+  // pipeline runs end-to-end when a hotkey fires.
+  registerCaptureHotkeys({
+    onFullScreen: () => {
+      captureFullScreen()
+        .then((result) => console.log('captured full screen', result.imageBuffer.length))
+        .catch((err) => console.error('captureFullScreen failed', err))
+    },
+    onRegion: () => {
+      captureRegion()
+        .then((result) => console.log('captured region', result.imageBuffer.length))
+        .catch((err) => console.error('captureRegion failed', err))
+    },
+    onCursorToggle: () => {
+      console.log('cursor visibility toggle (not yet implemented)')
+    },
+    onNewThread: () => {
+      console.log('start new thread (not yet implemented)')
+    },
+    onToggleOverview: () => {
+      console.log('toggle overview mode (not yet implemented)')
+    }
+  })
+
   createWindow()
 
   app.on('activate', function () {
@@ -70,6 +97,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('will-quit', () => {
+  unregisterCaptureHotkeys()
 })
 
 // In this file you can include the rest of your app's specific main process
