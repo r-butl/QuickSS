@@ -46,31 +46,41 @@ const PRINT_READY_TIMEOUT_MS = 10_000
  * result, via a one-shot `export:printReady` message sent from
  * `PrintView.tsx` (see `notifyPrintReady` in the preload API). Matched to
  * `webContentsId` so a stray message from some other window can't resolve
- * the wrong export's wait. Falls back to a timeout rather than hanging
- * forever if that signal is ever lost - `printToPDF` on a not-fully-loaded
- * page just produces a blank/partial PDF rather than an error, which is an
- * acceptable degradation for this fallback path.
+ * the wrong export's wait. If the print view instead signals
+ * `export:printFailed` (its `getPrintData()` fetch threw), the returned
+ * promise rejects instead of resolving, so `exportGuideAsPdf` fails the
+ * export rather than silently calling `printToPDF()` on an empty page and
+ * writing a blank PDF to disk. Falls back to a timeout, resolved
+ * successfully, only if neither signal ever arrives (defensive fallback
+ * for an unanticipated renderer failure mode, not the expected path).
  */
 function waitForPrintReady(webContentsId: number): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let settled = false
 
-    const listener = (event: Electron.IpcMainEvent): void => {
+    const readyListener = (event: Electron.IpcMainEvent): void => {
       if (event.sender.id !== webContentsId) return
-      finish()
+      finish(() => resolve())
     }
 
-    const timer = setTimeout(finish, PRINT_READY_TIMEOUT_MS)
+    const failedListener = (event: Electron.IpcMainEvent, message: string): void => {
+      if (event.sender.id !== webContentsId) return
+      finish(() => reject(new Error(`Print view failed to render: ${message}`)))
+    }
 
-    function finish(): void {
+    const timer = setTimeout(() => finish(() => resolve()), PRINT_READY_TIMEOUT_MS)
+
+    function finish(settle: () => void): void {
       if (settled) return
       settled = true
       clearTimeout(timer)
-      ipcMain.removeListener('export:printReady', listener)
-      resolve()
+      ipcMain.removeListener('export:printReady', readyListener)
+      ipcMain.removeListener('export:printFailed', failedListener)
+      settle()
     }
 
-    ipcMain.on('export:printReady', listener)
+    ipcMain.on('export:printReady', readyListener)
+    ipcMain.on('export:printFailed', failedListener)
   })
 }
 

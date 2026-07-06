@@ -25,6 +25,7 @@ function PrintView(): React.JSX.Element {
       })
       .catch((error: unknown) => {
         console.error('Failed to fetch print data:', error)
+        window.guideApi.notifyPrintFailed(error instanceof Error ? error.message : String(error))
       })
     return () => {
       cancelled = true

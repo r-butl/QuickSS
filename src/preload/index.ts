@@ -82,6 +82,9 @@ const guideApi: GuideApi = {
   getPrintData: (): Promise<PrintData> => ipcRenderer.invoke('export:getPrintData'),
   notifyPrintReady: (): void => {
     ipcRenderer.send('export:printReady')
+  },
+  notifyPrintFailed: (message: string): void => {
+    ipcRenderer.send('export:printFailed', message)
   }
 }
 

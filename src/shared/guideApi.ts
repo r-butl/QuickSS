@@ -176,4 +176,10 @@ export interface GuideApi {
    * it's safe to call `printToPDF()`.
    */
   notifyPrintReady: () => void
+  /**
+   * Sent by the print-view renderer if fetching/rendering `getPrintData()`
+   * fails, so the main process can fail the export instead of silently
+   * calling `printToPDF()` on an empty page and producing a blank PDF.
+   */
+  notifyPrintFailed: (message: string) => void
 }
