@@ -46,8 +46,8 @@ export function exportGuideAsMarkdown(guide: Guide): string {
       const step = guide.steps[stepId]
       if (!step) return
 
-      const heading = step.caption ? step.caption : `Step ${index + 1}`
-      lines.push(`### Step ${index + 1}: ${heading}`, '')
+      const heading = step.caption ? `Step ${index + 1}: ${step.caption}` : `Step ${index + 1}`
+      lines.push(`### ${heading}`, '')
       if (step.description) {
         lines.push(step.description, '')
       }

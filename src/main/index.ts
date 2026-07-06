@@ -10,6 +10,7 @@ import { captureFullScreen, captureRegion } from './capture'
 import { initCaptureFlow, startPendingCapture, toggleCursorVisible } from './captureFlow'
 import { createOrShowPreviewWindow, getPreviewWindow } from './windows/previewWindow'
 import { getMainWindow, setMainWindow } from './windows/windowRegistry'
+import { getCurrentGuide } from './guideState'
 
 function createWindow(): void {
   // Create the browser window.
@@ -80,11 +81,16 @@ app.whenReady().then(async () => {
   initHotkeys(
     {
       onFullScreen: () => {
+        // No-op if no Guide is currently open (e.g. hotkey pressed from the
+        // Picker screen) - there'd be nothing for `preview:confirm` to
+        // attach the resulting step to.
+        if (!getCurrentGuide()) return
         captureFullScreen()
           .then((result) => startPendingCapture(result))
           .catch((err) => console.error('captureFullScreen failed', err))
       },
       onRegion: () => {
+        if (!getCurrentGuide()) return
         captureRegion()
           .then((result) => startPendingCapture(result))
           .catch((err) => console.error('captureRegion failed', err))
@@ -93,9 +99,11 @@ app.whenReady().then(async () => {
         toggleCursorVisible()
       },
       onNewThread: () => {
+        if (!getCurrentGuide()) return
         createNewThread().catch((err) => console.error('createNewThread failed', err))
       },
       onToggleOverview: () => {
+        if (!getCurrentGuide()) return
         getMainWindow()?.webContents.send('app:toggleOverview')
       }
     },

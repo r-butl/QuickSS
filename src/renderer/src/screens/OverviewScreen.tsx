@@ -168,6 +168,14 @@ function SortableStepCard({
     })
   }
 
+  function handleCursorVisibleChange(event: React.ChangeEvent<HTMLInputElement>): void {
+    window.guideApi
+      .updateStepCursorVisible(step.id, event.target.checked)
+      .catch((error: unknown) => {
+        console.error('Failed to update step cursor visibility:', error)
+      })
+  }
+
   return (
     <div ref={setNodeRef} style={style}>
       <span
@@ -202,6 +210,14 @@ function SortableStepCard({
           onBlur={handleDescriptionBlur}
         />
         <p style={{ margin: 0, fontSize: 12, color: '#666' }}>{truncate(description, 80)}</p>
+        <label style={{ fontSize: 12, display: 'flex', gap: 4, alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            checked={step.cursor.visible}
+            onChange={handleCursorVisibleChange}
+          />
+          Show cursor
+        </label>
       </div>
       <button type="button" onClick={() => onCropStep(step.id)}>
         Crop

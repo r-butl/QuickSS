@@ -55,13 +55,20 @@ function CommandHud(): React.JSX.Element {
   }
 
   const tally = computeTally(current)
+  const activeThreadId = current?.activeThreadId ?? null
 
   return (
     <div>
       <p>
         {tally.length === 0
           ? 'No threads yet'
-          : tally.map((entry) => `${entry.name}: ${entry.count}`).join(' · ')}
+          : tally
+              .map((entry) =>
+                entry.threadId === activeThreadId
+                  ? `${entry.name}: ${entry.count} active`
+                  : `${entry.name}: ${entry.count}`
+              )
+              .join(' · ')}
       </p>
       <button type="button" onClick={handleNewThread} disabled={!current || isCreatingThread}>
         New Thread

@@ -24,6 +24,13 @@ export interface GuideResult {
 export interface CurrentGuideResult {
   guidePath: string
   guide: Guide
+  /**
+   * The thread a new capture's confirm step would attach to right now (see
+   * `src/main/guideState.ts`'s `activeThreadId`), or `null` if the guide has
+   * no threads yet. Exposed here so the command HUD can mark which thread
+   * is "active" in its tally (requirement 2's example format).
+   */
+  activeThreadId: string | null
 }
 
 export interface CreateThreadResult {
@@ -149,6 +156,11 @@ export interface GuideApi {
    * mutates the underlying image file.
    */
   updateStepCrop: (stepId: string, crop: Step['crop']) => Promise<EditorActionResult>
+  /**
+   * Updates a step's cursor-visibility flag. Editable at any time in
+   * overview mode (requirement 7), not just during the preview flow.
+   */
+  updateStepCursorVisible: (stepId: string, visible: boolean) => Promise<EditorActionResult>
   /** Deletes a step from the Guide and whichever container holds it. */
   deleteStep: (stepId: string) => Promise<EditorActionResult>
   /**

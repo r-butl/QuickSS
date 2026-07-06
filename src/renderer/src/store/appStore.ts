@@ -11,6 +11,16 @@ export interface AppState {
    * overview, or picker) rather than always bouncing back to the picker.
    */
   previousScreen: Screen
+  /**
+   * These two fields reflect the Guide at entry time (whatever was passed
+   * to `enterGuide` on "New Guide"/"Open Guide") and exist only for screen
+   * routing - deciding which screen to show, not what to show on it. They
+   * are NOT kept live as the Guide changes afterward. `CaptureScreen`,
+   * `OverviewScreen`, and `CommandHud` all treat the main process's
+   * `getCurrent()`/`guide:updated` (see `src/main/guideState.ts`) as the
+   * authoritative source for live Guide content - don't read `currentGuide`
+   * here for anything that needs to stay in sync.
+   */
   currentGuide: Guide | null
   currentGuidePath: string | null
   openPicker: () => void

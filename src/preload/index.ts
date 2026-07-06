@@ -74,6 +74,8 @@ const guideApi: GuideApi = {
   ): Promise<EditorActionResult> => ipcRenderer.invoke('editor:updateStep', stepId, updates),
   updateStepCrop: (stepId: string, crop: Step['crop']): Promise<EditorActionResult> =>
     ipcRenderer.invoke('editor:updateStepCrop', stepId, crop),
+  updateStepCursorVisible: (stepId: string, visible: boolean): Promise<EditorActionResult> =>
+    ipcRenderer.invoke('editor:updateStepCursorVisible', stepId, visible),
   deleteStep: (stepId: string): Promise<EditorActionResult> =>
     ipcRenderer.invoke('editor:deleteStep', stepId),
   readImage: (guidePath: string, imageFile: string): Promise<string> =>

@@ -11,6 +11,7 @@ import {
   renameThread,
   updateStep,
   updateStepCrop,
+  updateStepCursorVisible,
   deleteStep,
   type StepContainer
 } from './manifest'
@@ -616,6 +617,33 @@ describe('updateStepCrop', () => {
     expect(guide).toEqual(guideCopy)
     expect(guide).not.toBe(updated)
     expect(guide.steps['a1'].crop).toBeNull()
+  })
+})
+
+describe('updateStepCursorVisible', () => {
+  it('updates the cursor visible flag, leaving x/y untouched', () => {
+    const { guide } = makeFixtureGuide()
+    const updated = updateStepCursorVisible(guide, 'a1', true)
+
+    expect(updated.steps['a1'].cursor).toEqual({ x: 0, y: 0, visible: true })
+  })
+
+  it('throws on unknown stepId', () => {
+    const { guide } = makeFixtureGuide()
+    expect(() => updateStepCursorVisible(guide, 'nonexistent', true)).toThrowError(
+      'Step with id "nonexistent" not found'
+    )
+  })
+
+  it('does not mutate the input Guide', () => {
+    const { guide } = makeFixtureGuide()
+    const guideCopy = JSON.parse(JSON.stringify(guide)) as Guide
+
+    const updated = updateStepCursorVisible(guide, 'a1', true)
+
+    expect(guide).toEqual(guideCopy)
+    expect(guide).not.toBe(updated)
+    expect(guide.steps['a1'].cursor.visible).toBe(false)
   })
 })
 

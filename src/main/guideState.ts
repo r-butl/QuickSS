@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import type { Guide } from '../shared/types'
+import type { CurrentGuideResult } from '../shared/guideApi'
 
 export interface CurrentGuideState {
   guidePath: string
@@ -31,6 +32,18 @@ let activeThreadId: string | null = null
 
 export function getCurrentGuide(): CurrentGuideState | null {
   return currentGuide
+}
+
+/**
+ * Same information as `getCurrentGuide`, plus `activeThreadId` - the shape
+ * sent to the renderer both by `guide:getCurrent` and the `guide:updated`
+ * broadcast, so the command HUD can mark which thread is currently active
+ * (requirement 2's "Thread 2: 3 active" example format) without a second
+ * IPC round-trip.
+ */
+export function getCurrentGuideResult(): CurrentGuideResult | null {
+  if (!currentGuide) return null
+  return { guidePath: currentGuide.guidePath, guide: currentGuide.guide, activeThreadId }
 }
 
 export function getActiveThreadId(): string | null {
@@ -84,8 +97,8 @@ export function computeStepTally(guide: Guide): ThreadTally[] {
 }
 
 function broadcastGuideUpdated(): void {
-  if (!currentGuide) return
-  const payload = { guidePath: currentGuide.guidePath, guide: currentGuide.guide }
+  const payload = getCurrentGuideResult()
+  if (!payload) return
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send('guide:updated', payload)
   }

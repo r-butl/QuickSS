@@ -240,6 +240,29 @@ export function updateStepCrop(guide: Guide, stepId: string, crop: Step['crop'])
 }
 
 /**
+ * Sets a Step's cursor-visibility flag. Mirrors `updateStepCrop`'s pattern
+ * exactly - this is what lets the flag "remain editable later in the
+ * editor/overview mode, not locked in at save time" per requirement 7, in
+ * addition to being settable during the preview flow. Throws if `stepId`
+ * doesn't exist.
+ */
+export function updateStepCursorVisible(guide: Guide, stepId: string, visible: boolean): Guide {
+  const step = guide.steps[stepId]
+  if (!step) {
+    throw new Error(`Step with id "${stepId}" not found`)
+  }
+
+  return {
+    ...guide,
+    steps: {
+      ...guide.steps,
+      [stepId]: { ...step, cursor: { ...step.cursor, visible } }
+    },
+    updatedAt: new Date().toISOString()
+  }
+}
+
+/**
  * Removes the step from `guide.steps` AND from whichever container
  * currently holds its id (searches all threads + unsorted). Throws if
  * `stepId` doesn't exist anywhere.

@@ -5,6 +5,7 @@ import type {
   ConfirmCaptureInput,
   ConfirmCaptureResult,
   CreateThreadResult,
+  CurrentGuideResult,
   EditorActionResult,
   GuideResult,
   PendingCaptureResult,
@@ -26,16 +27,17 @@ import {
   renameThread,
   reorderStep,
   updateStep,
-  updateStepCrop
+  updateStepCrop,
+  updateStepCursorVisible
 } from '../shared/manifest'
 import { ensureThreadForCapture } from './capture'
 import {
   getActiveThreadId,
   getCurrentGuide,
+  getCurrentGuideResult,
   setActiveThreadId,
   setCurrentGuide,
-  updateCurrentGuide,
-  type CurrentGuideState
+  updateCurrentGuide
 } from './guideState'
 import { clearPendingCapture, getPendingCapture } from './captureFlow'
 import { createOrShowCommandWindow } from './windows/commandWindow'
@@ -158,8 +160,8 @@ export function registerIpcHandlers(): void {
     return createNewThread()
   })
 
-  ipcMain.handle('guide:getCurrent', async (): Promise<CurrentGuideState | null> => {
-    return getCurrentGuide()
+  ipcMain.handle('guide:getCurrent', async (): Promise<CurrentGuideResult | null> => {
+    return getCurrentGuideResult()
   })
 
   ipcMain.on('app:requestToggleOverview', () => {
@@ -324,6 +326,22 @@ export function registerIpcHandlers(): void {
       }
 
       const updatedGuide = updateStepCrop(current.guide, stepId, crop)
+      await writeManifest(current.guidePath, updatedGuide)
+      updateCurrentGuide(updatedGuide)
+
+      return { guide: updatedGuide }
+    }
+  )
+
+  ipcMain.handle(
+    'editor:updateStepCursorVisible',
+    async (_event, stepId: string, visible: boolean): Promise<EditorActionResult> => {
+      const current = getCurrentGuide()
+      if (!current) {
+        throw new Error('editor:updateStepCursorVisible called with no current Guide set')
+      }
+
+      const updatedGuide = updateStepCursorVisible(current.guide, stepId, visible)
       await writeManifest(current.guidePath, updatedGuide)
       updateCurrentGuide(updatedGuide)
 

@@ -50,9 +50,7 @@ function PrintView(): React.JSX.Element {
           <h2>{thread.name}</h2>
           {thread.steps.map((step, index) => (
             <div key={step.id} style={{ marginBottom: 24, breakInside: 'avoid' }}>
-              <h3>
-                Step {index + 1}: {step.caption}
-              </h3>
+              <h3>{step.caption ? `Step ${index + 1}: ${step.caption}` : `Step ${index + 1}`}</h3>
               {step.description ? <p>{step.description}</p> : null}
               <img
                 src={step.imageDataUrl}
