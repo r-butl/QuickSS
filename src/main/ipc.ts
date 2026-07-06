@@ -162,10 +162,10 @@ export function registerIpcHandlers(): void {
         current.guide,
         getActiveThreadId()
       )
-      if (threadId !== getActiveThreadId()) {
-        // ensureThreadForCapture auto-created "Thread 1" - make it active.
-        setActiveThreadId(threadId)
-      }
+      // ensureThreadForCapture may have auto-created "Thread 1" - only mark
+      // it active once the write below durably persists it, so a write
+      // failure never leaves activeThreadId pointing at an unsaved thread.
+      const shouldActivateNewThread = threadId !== getActiveThreadId()
 
       const id = crypto.randomUUID()
       const step: Step = {
@@ -187,6 +187,9 @@ export function registerIpcHandlers(): void {
       const updatedGuide = addStepToThread(guideWithThread, threadId, step)
       await writeManifest(current.guidePath, updatedGuide)
       updateCurrentGuide(updatedGuide)
+      if (shouldActivateNewThread) {
+        setActiveThreadId(threadId)
+      }
 
       clearPendingCapture()
       hidePreviewWindow()
