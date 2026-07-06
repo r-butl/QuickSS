@@ -1,4 +1,4 @@
-import type { Guide } from './types'
+import type { Guide, Step } from './types'
 
 /**
  * Shared type contract for the `guideApi` surface exposed by the preload
@@ -27,6 +27,29 @@ export interface CreateThreadResult {
   threadId: string
 }
 
+/**
+ * Shape returned by `preview:getPending` for the pending-capture preview
+ * window. The image is pre-converted to a `data:image/png;base64,...` URL
+ * in the main process (`src/main/ipc.ts`) so the renderer can hand it
+ * straight to an `<img src>` without touching raw buffers.
+ */
+export interface PendingCaptureResult {
+  imageDataUrl: string
+  cursor: { x: number; y: number }
+  cursorVisible: boolean
+  crop: { x: number; y: number; width: number; height: number } | null
+}
+
+export interface ConfirmCaptureInput {
+  caption: string
+  description: string
+}
+
+export interface ConfirmCaptureResult {
+  guide: Guide
+  step: Step
+}
+
 export interface GuideApi {
   create: (title: string, basePath?: string) => Promise<GuideResult>
   open: (guidePath: string) => Promise<GuideResult>
@@ -48,4 +71,16 @@ export interface GuideApi {
   requestToggleOverview: () => void
   /** Used by the main window to receive toggle requests forwarded from the command HUD. */
   onToggleOverviewRequested: (callback: () => void) => () => void
+  /** Fetches the currently pending capture, if any, for the preview window. */
+  getPendingCapture: () => Promise<PendingCaptureResult | null>
+  /** Confirms the pending capture: persists it as a new Step and clears it. */
+  confirmCapture: (input: ConfirmCaptureInput) => Promise<ConfirmCaptureResult>
+  /** Discards the pending capture with no persistence. */
+  discardCapture: () => Promise<void>
+  /**
+   * Subscribes to live cursor-visibility toggles (from the global
+   * cursor-toggle hotkey) while the preview window is open. Returns an
+   * unsubscribe function.
+   */
+  onCursorToggled: (callback: (cursorVisible: boolean) => void) => () => void
 }

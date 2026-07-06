@@ -1,10 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type {
+  ConfirmCaptureInput,
+  ConfirmCaptureResult,
   CreateThreadResult,
   CurrentGuideResult,
   GuideApi,
   GuideResult,
+  PendingCaptureResult,
   RecentGuideEntry
 } from '../shared/guideApi'
 
@@ -32,6 +35,17 @@ const guideApi: GuideApi = {
     const listener = (): void => callback()
     ipcRenderer.on('app:toggleOverview', listener)
     return () => ipcRenderer.removeListener('app:toggleOverview', listener)
+  },
+  getPendingCapture: (): Promise<PendingCaptureResult | null> =>
+    ipcRenderer.invoke('preview:getPending'),
+  confirmCapture: (input: ConfirmCaptureInput): Promise<ConfirmCaptureResult> =>
+    ipcRenderer.invoke('preview:confirm', input),
+  discardCapture: (): Promise<void> => ipcRenderer.invoke('preview:discard'),
+  onCursorToggled: (callback: (cursorVisible: boolean) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, cursorVisible: boolean): void =>
+      callback(cursorVisible)
+    ipcRenderer.on('preview:cursorToggled', listener)
+    return () => ipcRenderer.removeListener('preview:cursorToggled', listener)
   }
 }
 

@@ -90,3 +90,27 @@ describe('setCurrentGuide / getCurrentGuide / updateCurrentGuide', () => {
     expect(() => updateCurrentGuide(makeGuide([]))).toThrow()
   })
 })
+
+describe('active thread id defaults set by setCurrentGuide', () => {
+  it('defaults activeThreadId to null when the guide has no threads', async () => {
+    vi.resetModules()
+    const { setCurrentGuide, getActiveThreadId } = await import('./guideState')
+
+    setCurrentGuide('/guides/test', makeGuide([]))
+
+    expect(getActiveThreadId()).toBeNull()
+  })
+
+  it('defaults activeThreadId to the last thread in guide.threads when threads exist', async () => {
+    vi.resetModules()
+    const { setCurrentGuide, getActiveThreadId } = await import('./guideState')
+
+    const guide = makeGuide([
+      { id: 't1', name: 'Thread 1', stepIds: [] },
+      { id: 't2', name: 'Thread 2', stepIds: ['s1'] }
+    ])
+    setCurrentGuide('/guides/test', guide)
+
+    expect(getActiveThreadId()).toBe('t2')
+  })
+})

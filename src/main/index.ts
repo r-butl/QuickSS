@@ -2,10 +2,12 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { registerIpcHandlers } from './ipc'
+import { createNewThread, registerIpcHandlers } from './ipc'
 import { registerCaptureHotkeys, unregisterCaptureHotkeys } from './hotkeys'
 import { captureFullScreen, captureRegion } from './capture'
-import { setMainWindow } from './windows/windowRegistry'
+import { initCaptureFlow, startPendingCapture, toggleCursorVisible } from './captureFlow'
+import { createOrShowPreviewWindow, getPreviewWindow } from './windows/previewWindow'
+import { getMainWindow, setMainWindow } from './windows/windowRegistry'
 
 function createWindow(): void {
   // Create the browser window.
@@ -59,28 +61,38 @@ app.whenReady().then(() => {
 
   registerIpcHandlers()
 
-  // Placeholder handlers: full integration with the preview window and
-  // Guide state comes in Phase 5. For now these just prove the capture
-  // pipeline runs end-to-end when a hotkey fires.
+  // Wires captureFlow.ts's injected side-effect callbacks to the real
+  // Electron-backed preview window. captureFlow.ts itself has no `electron`
+  // import (see its doc comment), so this is the one place those two worlds
+  // meet.
+  initCaptureFlow({
+    showPreview: () => {
+      createOrShowPreviewWindow()
+    },
+    onCursorToggled: (cursorVisible) => {
+      getPreviewWindow()?.webContents.send('preview:cursorToggled', cursorVisible)
+    }
+  })
+
   registerCaptureHotkeys({
     onFullScreen: () => {
       captureFullScreen()
-        .then((result) => console.log('captured full screen', result.imageBuffer.length))
+        .then((result) => startPendingCapture(result))
         .catch((err) => console.error('captureFullScreen failed', err))
     },
     onRegion: () => {
       captureRegion()
-        .then((result) => console.log('captured region', result.imageBuffer.length))
+        .then((result) => startPendingCapture(result))
         .catch((err) => console.error('captureRegion failed', err))
     },
     onCursorToggle: () => {
-      console.log('cursor visibility toggle (not yet implemented)')
+      toggleCursorVisible()
     },
     onNewThread: () => {
-      console.log('start new thread (not yet implemented)')
+      createNewThread().catch((err) => console.error('createNewThread failed', err))
     },
     onToggleOverview: () => {
-      console.log('toggle overview mode (not yet implemented)')
+      getMainWindow()?.webContents.send('app:toggleOverview')
     }
   })
 

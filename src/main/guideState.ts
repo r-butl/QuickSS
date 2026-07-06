@@ -21,12 +21,37 @@ export interface ThreadTally {
  */
 let currentGuide: CurrentGuideState | null = null
 
+/**
+ * The thread that a new capture's confirm step should attach to (Task 7).
+ * Reset whenever a Guide is (re)opened via `setCurrentGuide` - see that
+ * function's doc comment for the default-selection rule - and updated
+ * explicitly by `setActiveThreadId` whenever a new thread is created.
+ */
+let activeThreadId: string | null = null
+
 export function getCurrentGuide(): CurrentGuideState | null {
   return currentGuide
 }
 
+export function getActiveThreadId(): string | null {
+  return activeThreadId
+}
+
+export function setActiveThreadId(threadId: string | null): void {
+  activeThreadId = threadId
+}
+
+/**
+ * Sets the current Guide and resets `activeThreadId` to a reasonable
+ * default for "resume capturing" purposes: `null` if the guide has no
+ * threads yet (the very first capture will auto-create "Thread 1" per
+ * `ensureThreadForCapture`), or the last thread in `guide.threads` if any
+ * exist (most-recently-added thread is the most likely one the user wants
+ * to keep adding to after reopening a Guide).
+ */
 export function setCurrentGuide(guidePath: string, guide: Guide): void {
   currentGuide = { guidePath, guide }
+  activeThreadId = guide.threads.length > 0 ? guide.threads[guide.threads.length - 1].id : null
   broadcastGuideUpdated()
 }
 
