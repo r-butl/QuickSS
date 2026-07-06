@@ -43,6 +43,8 @@ function CommandHud(): React.JSX.Element {
     setIsCreatingThread(true)
     try {
       await window.guideApi.createThread()
+    } catch (error) {
+      console.error('Failed to create new thread:', error)
     } finally {
       setIsCreatingThread(false)
     }

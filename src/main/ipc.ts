@@ -89,8 +89,8 @@ export function registerIpcHandlers(): void {
     }
 
     const { guide: updatedGuide, thread } = createThread(current.guide)
-    updateCurrentGuide(updatedGuide)
     await writeManifest(current.guidePath, updatedGuide)
+    updateCurrentGuide(updatedGuide)
 
     return { guide: updatedGuide, threadId: thread.id }
   })
