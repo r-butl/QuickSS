@@ -71,11 +71,14 @@ export async function captureDisplay(
 
   const matched =
     sources.find((source) => source.display_id === String(display.id)) ??
-    (sources.length === 1 ? sources[0] : undefined) ??
-    sources[0]
+    (sources.length === 1 ? sources[0] : undefined)
 
   if (!matched) {
-    throw new Error('No screen sources available from desktopCapturer')
+    throw new Error(
+      `Could not match desktopCapturer source to display ${display.id}: ` +
+        `no source had a matching display_id, and ${sources.length} sources were available ` +
+        `(fallback to an arbitrary source is only safe when exactly one is available)`
+    )
   }
 
   const imageBuffer = matched.thumbnail.toPNG()
