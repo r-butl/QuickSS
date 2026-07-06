@@ -115,6 +115,12 @@ export interface GuideApi {
     stepId: string,
     updates: Partial<Pick<Step, 'caption' | 'description'>>
   ) => Promise<EditorActionResult>
+  /**
+   * Updates a step's crop rectangle. `crop: null` clears the crop, fully
+   * restoring the full original frame - crop is metadata-only and never
+   * mutates the underlying image file.
+   */
+  updateStepCrop: (stepId: string, crop: Step['crop']) => Promise<EditorActionResult>
   /** Deletes a step from the Guide and whichever container holds it. */
   deleteStep: (stepId: string) => Promise<EditorActionResult>
   /**

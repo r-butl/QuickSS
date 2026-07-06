@@ -69,6 +69,8 @@ const guideApi: GuideApi = {
     stepId: string,
     updates: Partial<Pick<Step, 'caption' | 'description'>>
   ): Promise<EditorActionResult> => ipcRenderer.invoke('editor:updateStep', stepId, updates),
+  updateStepCrop: (stepId: string, crop: Step['crop']): Promise<EditorActionResult> =>
+    ipcRenderer.invoke('editor:updateStepCrop', stepId, crop),
   deleteStep: (stepId: string): Promise<EditorActionResult> =>
     ipcRenderer.invoke('editor:deleteStep', stepId),
   readImage: (guidePath: string, imageFile: string): Promise<string> =>

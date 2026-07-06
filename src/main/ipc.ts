@@ -20,7 +20,8 @@ import {
   moveStep,
   renameThread,
   reorderStep,
-  updateStep
+  updateStep,
+  updateStepCrop
 } from '../shared/manifest'
 import { ensureThreadForCapture } from './capture'
 import {
@@ -285,6 +286,22 @@ export function registerIpcHandlers(): void {
       }
 
       const updatedGuide = updateStep(current.guide, stepId, updates)
+      await writeManifest(current.guidePath, updatedGuide)
+      updateCurrentGuide(updatedGuide)
+
+      return { guide: updatedGuide }
+    }
+  )
+
+  ipcMain.handle(
+    'editor:updateStepCrop',
+    async (_event, stepId: string, crop: Step['crop']): Promise<EditorActionResult> => {
+      const current = getCurrentGuide()
+      if (!current) {
+        throw new Error('editor:updateStepCrop called with no current Guide set')
+      }
+
+      const updatedGuide = updateStepCrop(current.guide, stepId, crop)
       await writeManifest(current.guidePath, updatedGuide)
       updateCurrentGuide(updatedGuide)
 

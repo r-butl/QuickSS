@@ -12,6 +12,7 @@ import {
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import AppHeader from '../components/AppHeader'
+import CropEditor from '../components/CropEditor'
 import type { CurrentGuideResult, StepContainer } from '../../../shared/guideApi'
 import type { Guide, Step, Thread } from '../../../shared/types'
 
@@ -99,12 +100,14 @@ interface SortableStepCardProps {
   step: Step
   guidePath: string
   imageCache: ImageCache
+  onCropStep: (stepId: string) => void
 }
 
 function SortableStepCard({
   step,
   guidePath,
-  imageCache
+  imageCache,
+  onCropStep
 }: SortableStepCardProps): React.JSX.Element {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: step.id
@@ -200,6 +203,9 @@ function SortableStepCard({
         />
         <p style={{ margin: 0, fontSize: 12, color: '#666' }}>{truncate(description, 80)}</p>
       </div>
+      <button type="button" onClick={() => onCropStep(step.id)}>
+        Crop
+      </button>
       <button type="button" onClick={handleDelete}>
         Delete
       </button>
@@ -227,6 +233,7 @@ interface StepListProps {
   guidePath: string
   imageCache: ImageCache
   emptyLabel: string
+  onCropStep: (stepId: string) => void
 }
 
 function StepList({
@@ -234,7 +241,8 @@ function StepList({
   steps,
   guidePath,
   imageCache,
-  emptyLabel
+  emptyLabel,
+  onCropStep
 }: StepListProps): React.JSX.Element {
   return (
     <SortableContext items={descriptor.stepIds} strategy={verticalListSortingStrategy}>
@@ -251,6 +259,7 @@ function StepList({
                 step={step}
                 guidePath={guidePath}
                 imageCache={imageCache}
+                onCropStep={onCropStep}
               />
             )
           })
@@ -265,13 +274,15 @@ interface ThreadSectionProps {
   steps: Record<string, Step>
   guidePath: string
   imageCache: ImageCache
+  onCropStep: (stepId: string) => void
 }
 
 function ThreadSection({
   thread,
   steps,
   guidePath,
-  imageCache
+  imageCache,
+  onCropStep
 }: ThreadSectionProps): React.JSX.Element {
   const [name, setName] = useState(thread.name)
   const [lastSeenName, setLastSeenName] = useState(thread.name)
@@ -310,6 +321,7 @@ function ThreadSection({
         guidePath={guidePath}
         imageCache={imageCache}
         emptyLabel="No steps yet — drag steps here."
+        onCropStep={onCropStep}
       />
     </section>
   )
@@ -327,6 +339,7 @@ function ThreadSection({
 function OverviewScreen(): React.JSX.Element {
   const [current, setCurrent] = useState<CurrentGuideResult | null>(null)
   const [activeStepId, setActiveStepId] = useState<string | null>(null)
+  const [croppingStepId, setCroppingStepId] = useState<string | null>(null)
   const imageCache = useRef(new Map<string, string>())
 
   useEffect(() => {
@@ -399,6 +412,7 @@ function OverviewScreen(): React.JSX.Element {
   }
 
   const activeStep = activeStepId ? guide.steps[activeStepId] : null
+  const croppingStep = croppingStepId ? guide.steps[croppingStepId] : null
 
   return (
     <div>
@@ -417,6 +431,7 @@ function OverviewScreen(): React.JSX.Element {
               steps={guide.steps}
               guidePath={guidePath}
               imageCache={imageCache}
+              onCropStep={setCroppingStepId}
             />
           ))}
 
@@ -432,6 +447,7 @@ function OverviewScreen(): React.JSX.Element {
               guidePath={guidePath}
               imageCache={imageCache}
               emptyLabel="Nothing unsorted."
+              onCropStep={setCroppingStepId}
             />
           </section>
 
@@ -451,6 +467,14 @@ function OverviewScreen(): React.JSX.Element {
           </DragOverlay>
         </DndContext>
       </main>
+
+      {croppingStep ? (
+        <CropEditor
+          guidePath={guidePath}
+          step={croppingStep}
+          onClose={() => setCroppingStepId(null)}
+        />
+      ) : null}
     </div>
   )
 }
