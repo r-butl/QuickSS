@@ -65,4 +65,8 @@ describe('comboToAccelerator', () => {
   it('returns null for unrecognized keys', () => {
     expect(comboToAccelerator(combo({ key: 'Unidentified', ctrlKey: true }))).toBeNull()
   })
+
+  it('rejects a non-ASCII composed key (e.g. a dead-key result on some layouts)', () => {
+    expect(comboToAccelerator(combo({ key: 'Í', altKey: true, shiftKey: true }))).toBeNull()
+  })
 })

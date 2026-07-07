@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CurrentGuideResult } from '../../../shared/guideApi'
+import { BINDING_ORDER, BINDING_LABELS } from '../../../shared/labels'
 
 interface ThreadTally {
   threadId: string
@@ -25,8 +26,19 @@ function computeTally(current: CurrentGuideResult | null): ThreadTally[] {
  * local renderer state shared across windows.
  */
 function CommandHud(): React.JSX.Element {
-  const [current, setCurrent] = useState<CurrentGuideResult | null>(null)
-  const [isCreatingThread, setIsCreatingThread] = useState(false)
+  const [current, setCurrent] = useState<CurrentGuideResult | null>(null);
+  const [hotkeys, setHotkeys] = useState<HotkeyBindings | null>(null)
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const [error, setError] = useState<string | null>(null)
+
+   useEffect(() => {
+    window.settingsApi
+      .getSettings()
+      .then((settings) => setHotkeys(settings.hotkeys))
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : String(err))
+      })
+  }, [])
 
   useEffect(() => {
     window.guideApi.getCurrent().then(setCurrent)
@@ -76,6 +88,19 @@ function CommandHud(): React.JSX.Element {
       <button type="button" onClick={handleToggleOverview} disabled={!current}>
         Overview
       </button>
+
+        <div style={{fontSize: 8}}>
+          <table>
+            {BINDING_ORDER.map((binding) => (
+              <tr key={binding}>
+                <td><span>{BINDING_LABELS[binding]}</span></td>
+                <td><code>{hotkeys[binding]}</code></td>
+              </tr>
+
+            ))}
+          </table>
+        </div>
+
     </div>
   )
 }

@@ -77,38 +77,47 @@ app.whenReady().then(async () => {
     }
   })
 
-  const settings = await readSettings()
-  initHotkeys(
-    {
-      onFullScreen: () => {
-        // No-op if no Guide is currently open (e.g. hotkey pressed from the
-        // Picker screen) - there'd be nothing for `preview:confirm` to
-        // attach the resulting step to.
-        if (!getCurrentGuide()) return
-        captureFullScreen()
-          .then((result) => startPendingCapture(result))
-          .catch((err) => console.error('captureFullScreen failed', err))
+  // Hotkey registration failures (e.g. a corrupted settings.json) must
+  // never prevent the window from opening - `registerCaptureHotkeys`
+  // already falls back to defaults per-binding, but this try/catch is a
+  // last line of defense so an unforeseen error here still leads to a
+  // usable app rather than a silent no-window startup.
+  try {
+    const settings = await readSettings()
+    initHotkeys(
+      {
+        onFullScreen: () => {
+          // No-op if no Guide is currently open (e.g. hotkey pressed from the
+          // Picker screen) - there'd be nothing for `preview:confirm` to
+          // attach the resulting step to.
+          if (!getCurrentGuide()) return
+          captureFullScreen()
+            .then((result) => startPendingCapture(result))
+            .catch((err) => console.error('captureFullScreen failed', err))
+        },
+        onRegion: () => {
+          if (!getCurrentGuide()) return
+          captureRegion()
+            .then((result) => startPendingCapture(result))
+            .catch((err) => console.error('captureRegion failed', err))
+        },
+        onCursorToggle: () => {
+          toggleCursorVisible()
+        },
+        onNewThread: () => {
+          if (!getCurrentGuide()) return
+          createNewThread().catch((err) => console.error('createNewThread failed', err))
+        },
+        onToggleOverview: () => {
+          if (!getCurrentGuide()) return
+          getMainWindow()?.webContents.send('app:toggleOverview')
+        }
       },
-      onRegion: () => {
-        if (!getCurrentGuide()) return
-        captureRegion()
-          .then((result) => startPendingCapture(result))
-          .catch((err) => console.error('captureRegion failed', err))
-      },
-      onCursorToggle: () => {
-        toggleCursorVisible()
-      },
-      onNewThread: () => {
-        if (!getCurrentGuide()) return
-        createNewThread().catch((err) => console.error('createNewThread failed', err))
-      },
-      onToggleOverview: () => {
-        if (!getCurrentGuide()) return
-        getMainWindow()?.webContents.send('app:toggleOverview')
-      }
-    },
-    settings.hotkeys
-  )
+      settings.hotkeys
+    )
+  } catch (err) {
+    console.error('Failed to initialize hotkeys, continuing startup without them', err)
+  }
 
   createWindow()
 

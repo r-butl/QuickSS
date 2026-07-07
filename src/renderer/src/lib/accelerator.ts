@@ -54,7 +54,13 @@ function keyToAcceleratorToken(key: string): string | null {
     return namedKeys[key]
   }
 
-  if (key.length === 1) {
+  // Only plain ASCII letters/digits/punctuation are valid Electron
+  // accelerator tokens. Some keyboard layouts produce a composed,
+  // non-ASCII `key` for Alt/Alt+Shift combinations (e.g. `Í`) - those must
+  // be rejected here rather than passed through, since Electron's
+  // accelerator parser throws on non-ASCII input instead of just failing
+  // to register.
+  if (key.length === 1 && key.charCodeAt(0) < 128) {
     return key.toUpperCase()
   }
 

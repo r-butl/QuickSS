@@ -2,22 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '../store/appStore'
 import { comboToAccelerator } from '../lib/accelerator'
 import type { HotkeyBindings } from '../../../shared/settings'
-
-const BINDING_LABELS: Record<keyof HotkeyBindings, string> = {
-  fullScreen: 'Capture Full Screen',
-  region: 'Capture Region',
-  cursorToggle: 'Toggle Cursor Visibility',
-  newThread: 'New Thread',
-  toggleOverview: 'Toggle Overview'
-}
-
-const BINDING_ORDER: Array<keyof HotkeyBindings> = [
-  'fullScreen',
-  'region',
-  'cursorToggle',
-  'newThread',
-  'toggleOverview'
-]
+import { BINDING_ORDER, BINDING_LABELS} from '../../../shared/labels';
 
 /**
  * Settings screen (Task 11): lets the user view and re-bind the five
@@ -99,21 +84,33 @@ function SettingsScreen(): React.JSX.Element {
         {hotkeys === null ? (
           <p>Loading...</p>
         ) : (
-          <ul>
-            {BINDING_ORDER.map((binding) => (
-              <li key={binding}>
-                <span>{BINDING_LABELS[binding]}</span>
-                <code>{hotkeys[binding]}</code>
-                <button
-                  type="button"
-                  onClick={() => setListeningFor(binding)}
-                  disabled={listeningFor !== null}
-                >
-                  {listeningFor === binding ? 'Press a key combination...' : 'Change'}
-                </button>
-              </li>
-            ))}
-          </ul>
+            <table>
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>Binding</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {BINDING_ORDER.map((binding) => (
+                  <tr key={binding}>
+                    <td><span>{BINDING_LABELS[binding]}</span></td>
+                    <td><code>{hotkeys[binding]}</code></td>
+                    <td><button
+                      type="button"
+                      onClick={() => setListeningFor(binding)}
+                      disabled={listeningFor !== null}
+                    >
+                      {listeningFor === binding ? 'Press a key combination...' : 'Change'}
+                    </button></td>
+                  </tr>
+
+                ))}
+              </tbody>
+              
+            </table>
+
         )}
       </section>
     </div>
