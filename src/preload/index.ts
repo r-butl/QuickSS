@@ -7,6 +7,7 @@ import type {
   CurrentGuideResult,
   EditorActionResult,
   GuideApi,
+  GuideMode,
   GuideResult,
   PendingCaptureResult,
   PrintData,
@@ -41,6 +42,9 @@ const guideApi: GuideApi = {
     const listener = (): void => callback()
     ipcRenderer.on('app:toggleOverview', listener)
     return () => ipcRenderer.removeListener('app:toggleOverview', listener)
+  },
+  notifyModeChanged: (mode: GuideMode): void => {
+    ipcRenderer.send('app:modeChanged', mode)
   },
   getPendingCapture: (): Promise<PendingCaptureResult | null> =>
     ipcRenderer.invoke('preview:getPending'),

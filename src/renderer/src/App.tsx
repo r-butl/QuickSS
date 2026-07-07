@@ -18,6 +18,16 @@ function App(): React.JSX.Element {
     })
   }, [toggleOverview])
 
+  // Keeps the main window and command HUD mutually exclusive - see
+  // `GuideApi.notifyModeChanged`'s doc comment. Only sent for capture/
+  // overview since those are the only two screens the main process treats
+  // specially; picker/settings leave both windows as they already are.
+  useEffect(() => {
+    if (screen === 'capture' || screen === 'overview') {
+      window.guideApi.notifyModeChanged(screen)
+    }
+  }, [screen])
+
   switch (screen) {
     case 'capture':
       return <CaptureScreen />

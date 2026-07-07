@@ -74,3 +74,14 @@ export function createOrShowCommandWindow(): BrowserWindow {
 export function getCommandWindow(): BrowserWindow | null {
   return commandWindow
 }
+
+/**
+ * Hides (without destroying) the command HUD window, if it exists. Used
+ * when the main window switches to overview mode - the HUD's tally/quick-
+ * capture controls aren't relevant while reviewing a Guide, so it's hidden
+ * rather than left floating on top of the overview UI. Mirrors
+ * `hidePreviewWindow`'s hide-not-destroy approach in `previewWindow.ts`.
+ */
+export function hideCommandWindow(): void {
+  commandWindow?.hide()
+}

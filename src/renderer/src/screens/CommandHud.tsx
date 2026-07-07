@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CurrentGuideResult } from '../../../shared/guideApi'
+import { HotkeyBindings } from 'src/shared/settings';
 import { BINDING_ORDER, BINDING_LABELS } from '../../../shared/labels'
 
 interface ThreadTally {
@@ -29,19 +30,17 @@ function CommandHud(): React.JSX.Element {
   const [current, setCurrent] = useState<CurrentGuideResult | null>(null);
   const [hotkeys, setHotkeys] = useState<HotkeyBindings | null>(null)
   const [isCreatingThread, setIsCreatingThread] = useState(false);
-  const [error, setError] = useState<string | null>(null)
 
-   useEffect(() => {
+  useEffect(() => {
+
+    window.guideApi.getCurrent().then(setCurrent);
+
     window.settingsApi
       .getSettings()
       .then((settings) => setHotkeys(settings.hotkeys))
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : String(err))
+          console.log(err);
       })
-  }, [])
-
-  useEffect(() => {
-    window.guideApi.getCurrent().then(setCurrent)
 
     const unsubscribe = window.guideApi.onGuideUpdated((payload) => {
       setCurrent(payload)
@@ -89,6 +88,8 @@ function CommandHud(): React.JSX.Element {
         Overview
       </button>
 
+      { hotkeys &&
+
         <div style={{fontSize: 8}}>
           <table>
             {BINDING_ORDER.map((binding) => (
@@ -100,7 +101,7 @@ function CommandHud(): React.JSX.Element {
             ))}
           </table>
         </div>
-
+      }
     </div>
   )
 }

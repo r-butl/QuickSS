@@ -33,6 +33,13 @@ export interface CurrentGuideResult {
   activeThreadId: string | null
 }
 
+/**
+ * The main window's two Guide-editing screens - kept here (rather than only
+ * in the renderer's `appStore.ts` `Screen` union) since `notifyModeChanged`
+ * is part of the cross-process `GuideApi` contract.
+ */
+export type GuideMode = 'capture' | 'overview'
+
 export interface CreateThreadResult {
   guide: Guide
   threadId: string
@@ -118,6 +125,15 @@ export interface GuideApi {
   requestToggleOverview: () => void
   /** Used by the main window to receive toggle requests forwarded from the command HUD. */
   onToggleOverviewRequested: (callback: () => void) => () => void
+  /**
+   * Tells the main process which of the main window's two Guide-editing
+   * screens is now active, so it can keep the main window and command HUD
+   * mutually exclusive: overview hides the HUD (its quick-capture controls
+   * aren't relevant while reviewing), capture hides the main window (that
+   * screen has no interactive controls of its own - see `CaptureScreen`'s
+   * doc comment). Not sent for the picker/settings screens.
+   */
+  notifyModeChanged: (mode: GuideMode) => void
   /** Fetches the currently pending capture, if any, for the preview window. */
   getPendingCapture: () => Promise<PendingCaptureResult | null>
   /** Confirms the pending capture: persists it as a new Step and clears it. */

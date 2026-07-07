@@ -40,9 +40,10 @@ import {
   updateCurrentGuide
 } from './guideState'
 import { clearPendingCapture, getPendingCapture } from './captureFlow'
-import { createOrShowCommandWindow } from './windows/commandWindow'
+import { createOrShowCommandWindow, hideCommandWindow } from './windows/commandWindow'
 import { hidePreviewWindow } from './windows/previewWindow'
 import { getMainWindow } from './windows/windowRegistry'
+import type { GuideMode } from '../shared/guideApi'
 import {
   exportGuideAsJson,
   exportGuideAsMarkdown,
@@ -166,6 +167,21 @@ export function registerIpcHandlers(): void {
 
   ipcMain.on('app:requestToggleOverview', () => {
     getMainWindow()?.webContents.send('app:toggleOverview')
+  })
+
+  // Keeps the main window and command HUD mutually exclusive (see
+  // `GuideApi.notifyModeChanged`'s doc comment): overview mode is for
+  // reviewing/editing in the main window, capture mode is driven entirely
+  // by the HUD and global hotkeys, so only one is ever shown at a time.
+  ipcMain.on('app:modeChanged', (_event, mode: GuideMode) => {
+    const mainWindow = getMainWindow()
+    if (mode === 'overview') {
+      hideCommandWindow()
+      mainWindow?.show()
+    } else {
+      mainWindow?.hide()
+      createOrShowCommandWindow()
+    }
   })
 
   ipcMain.handle('preview:getPending', async (): Promise<PendingCaptureResult | null> => {
